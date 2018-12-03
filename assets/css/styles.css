@@ -1,0 +1,15 @@
+body {
+  padding-top: 10px; }
+
+.main-content {
+  padding-left: 50px;
+  margin-top: 50px;
+  min-height: 100%; }
+
+.header {
+  position: sticky; }
+
+.footer {
+  background-color: #343a40; }
+  .footer text-color {
+    color: #f8f8f8; }
