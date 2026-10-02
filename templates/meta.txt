@@ -1,0 +1,1 @@
+$date$	$title$	$if(draft)$draft$endif$	$for(tags)$$tags$$sep$ $endfor$	$description$
