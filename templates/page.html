@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$if(pagetitle)$$pagetitle$ · $endif$$site$</title>
+$if(description)$<meta name="description" content="$description$">
+$endif$$if(highlighting-css)$<style>
+$highlighting-css$
+</style>
+$endif$<link rel="stylesheet" href="$base$/style.css">
+<link rel="alternate" type="application/atom+xml" title="$site$" href="$base$/feed.xml">
+</head>
+<body>
+<header class="site">
+  <a class="brand" href="$base$/">$site$</a>
+  <nav>
+    <a href="$base$/blog/">Blog</a>
+    <a href="$base$/tags/">Themen</a>
+    <a href="$base$/gallery/">Galerie</a>
+    <a href="$base$/slides/">Slides</a>
+    <a href="$base$/about/">Über mich</a>
+  </nav>
+</header>
+<main>
+$if(post)$<article>
+<h1>$title$</h1>
+<p class="meta"><time datetime="$date$">$date$</time>$for(tags)$ <a class="tag" href="$base$/tags/$tags$/">#$tags$</a>$endfor$</p>
+$body$
+</article>
+$else$$if(title)$<h1>$title$</h1>
+$endif$$body$
+$endif$</main>
+<footer class="site">
+  <p>© $year$ $author$ · <a href="$base$/feed.xml">Feed</a></p>
+</footer>
+</body>
+</html>
