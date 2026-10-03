@@ -1,7 +1,10 @@
-// Hell/Dunkel-Umschalter (Standard Dunkel, merkt sich die Wahl), Menü-Button für schmale Bildschirme, Kopieren-Button für Code-Blöcke
+// Hell/Dunkel-Umschalter (Standard Dunkel) und Farbschema-Umschalter (Glass/Nord), beide merken sich die Wahl, Menü-Button für schmale Bildschirme, Kopieren-Button für Code-Blöcke
 (function () {
   var root = document.documentElement;
-  try { var saved = localStorage.getItem('theme'); if (saved) root.dataset.theme = saved; } catch (e) {}
+  try {
+    var saved = localStorage.getItem('theme'); if (saved) root.dataset.theme = saved;
+    var palette = localStorage.getItem('palette'); if (palette) root.dataset.palette = palette;
+  } catch (e) {}
 
   // Dark ist der Standard, nur ein gespeichertes "light" schaltet auf Hell
   function isDark() { return root.dataset.theme !== 'light'; }
@@ -15,6 +18,20 @@
         root.dataset.theme = isDark() ? 'light' : 'dark';
         try { localStorage.setItem('theme', root.dataset.theme); } catch (e) {}
         sync();
+      });
+    }
+
+    // Farbschema: Glass (Standard) <-> Nord
+    var paletteBtn = document.getElementById('palette-toggle');
+    if (paletteBtn) {
+      var label = function () {
+        paletteBtn.title = 'Farbschema: ' + (root.dataset.palette === 'nord' ? 'Nord' : 'Glass') + ' (wechseln)';
+      };
+      label();
+      paletteBtn.addEventListener('click', function () {
+        root.dataset.palette = root.dataset.palette === 'nord' ? 'glass' : 'nord';
+        try { localStorage.setItem('palette', root.dataset.palette); } catch (e) {}
+        label();
       });
     }
 

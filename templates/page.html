@@ -8,7 +8,7 @@ $if(description)$<meta name="description" content="$description$">
 $endif$$if(highlighting-css)$<style>
 $highlighting-css$
 </style>
-$endif$<script>document.documentElement.classList.add("js");try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+$endif$<script>document.documentElement.classList.add("js");try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t;var p=localStorage.getItem("palette");if(p)document.documentElement.dataset.palette=p}catch(e){}</script>
 <link rel="stylesheet" href="$base$/style.css?v=$v$">
 <link rel="alternate" type="application/atom+xml" title="$site$" href="$base$/feed.xml">
 </head>
@@ -23,6 +23,7 @@ $endif$<script>document.documentElement.classList.add("js");try{var t=localStora
     <a href="$base$/about/">Über mich</a>
   </nav>
   <div class="actions">
+    <button id="palette-toggle" class="icon-btn" type="button" aria-label="Farbschema wechseln" title="Farbschema wechseln">🎨</button>
     <button id="theme-toggle" class="icon-btn" type="button" aria-label="Hell/Dunkel umschalten">🌙</button>
     <button id="menu-toggle" class="icon-btn" type="button" aria-label="Menü" aria-expanded="false" aria-controls="site-nav">☰</button>
   </div>
