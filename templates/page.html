@@ -8,7 +8,8 @@ $if(description)$<meta name="description" content="$description$">
 $endif$$if(highlighting-css)$<style>
 $highlighting-css$
 </style>
-$endif$<link rel="stylesheet" href="$base$/style.css">
+$endif$<script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="$base$/style.css">
 <link rel="alternate" type="application/atom+xml" title="$site$" href="$base$/feed.xml">
 </head>
 <body>
@@ -20,6 +21,7 @@ $endif$<link rel="stylesheet" href="$base$/style.css">
     <a href="$base$/gallery/">Galerie</a>
     <a href="$base$/slides/">Slides</a>
     <a href="$base$/about/">Über mich</a>
+    <button id="theme-toggle" type="button" aria-label="Hell/Dunkel umschalten">🌙</button>
   </nav>
 </header>
 <main>
@@ -34,5 +36,6 @@ $endif$</main>
 <footer class="site">
   <p>© $year$ $author$ · <a href="$base$/feed.xml">Feed</a></p>
 </footer>
+<script src="$base$/site.js" defer></script>
 </body>
 </html>

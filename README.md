@@ -44,3 +44,9 @@ python3 -m http.server -d public 8000
 ## Einmalig in GitHub einstellen
 
 *Settings → Pages → Build and deployment → Source: GitHub Actions*
+
+## Theme und JavaScript
+
+Das Theme "Modern Glass" steckt komplett in `static/style.css`, Hell/Dunkel wird über `data-theme` am `<html>`-Element gesteuert.
+`static/site.js` wird auf jeder Seite geladen (Umschalter, Kopieren-Button). In einzelnen Posts kannst du zusätzlich
+rohes HTML mit Script-Blöcken direkt in die Markdown-Datei schreiben, pandoc reicht es unverändert durch.
