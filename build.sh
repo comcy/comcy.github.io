@@ -9,6 +9,8 @@ cd "$(dirname "$0")"
 OUT=public
 BASE=$(printf '%s' "$SITE_URL" | sed 's|^[a-z]*://[^/]*||')
 YEAR=$(date +%Y)
+# Prüfsumme von CSS und JS als Cache-Buster, damit Browser nach Änderungen sofort die neuen Dateien laden
+ASSET_V=$(cat static/style.css static/site.js | cksum | cut -d' ' -f1)
 US=$(printf '\037')  # Feldtrenner im Index (kein Whitespace, damit leere Felder erhalten bleiben)
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -22,7 +24,7 @@ render() {
   in=$1; out=$2; shift 2
   mkdir -p "$(dirname "$out")"
   pandoc "$in" --from markdown --to html5 --template templates/page.html \
-    -V site="$SITE_TITLE" -V base="$BASE" -V year="$YEAR" -V author="$SITE_AUTHOR" \
+    -V site="$SITE_TITLE" -V v="$ASSET_V" -V base="$BASE" -V year="$YEAR" -V author="$SITE_AUTHOR" \
     "$@" -o "$out"
 }
 
