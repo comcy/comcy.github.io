@@ -9,7 +9,7 @@ $endif$$if(highlighting-css)$<style>
 $highlighting-css$
 </style>
 $endif$<script>document.documentElement.classList.add("js");try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="$base$/style.css">
+<link rel="stylesheet" href="$base$/style.css?v=$v$">
 <link rel="alternate" type="application/atom+xml" title="$site$" href="$base$/feed.xml">
 </head>
 <body>
@@ -39,6 +39,6 @@ $endif$</main>
 <footer class="site">
   <p>© $year$ $author$ · <a href="$base$/feed.xml">Feed</a></p>
 </footer>
-<script src="$base$/site.js" defer></script>
+<script src="$base$/site.js?v=$v$" defer></script>
 </body>
 </html>
