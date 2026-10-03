@@ -47,6 +47,6 @@ python3 -m http.server -d public 8000
 
 ## Theme und JavaScript
 
-Das Theme "Modern Glass" steckt komplett in `static/style.css`, Hell/Dunkel wird über `data-theme` am `<html>`-Element gesteuert.
+Das Theme "Modern Glass" steckt komplett in `static/style.css`, Dunkel ist der Standard, Hell wird über `data-theme="light"` am `<html>`-Element gesteuert.
 `static/site.js` wird auf jeder Seite geladen (Umschalter, Kopieren-Button). In einzelnen Posts kannst du zusätzlich
 rohes HTML mit Script-Blöcken direkt in die Markdown-Datei schreiben, pandoc reicht es unverändert durch.
