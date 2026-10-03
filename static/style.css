@@ -95,3 +95,30 @@ div.sourceCode { position: relative; }
 :root:not([data-theme="light"]) pre code span.at, :root:not([data-theme="light"]) pre code span.va { color: #e0af68; }
 :root:not([data-theme="light"]) pre code span.co { color: #8b93b3; }
 :root:not([data-theme="light"]) pre code span.dv, :root:not([data-theme="light"]) pre code span.bn { color: #ff9e64; }
+
+/* Zusätzliches Theme "Nord": nur die Farbpalette von insanum/obsidian_nord (nord0-nord15),
+   gewählt über data-palette="nord" am <html>-Element, Hell/Dunkel wie gehabt über data-theme. */
+:root[data-palette="nord"] {
+  --bg: #2e3440; --bg2: #3b4252; --fg: #eceff4; --muted: #aeb8cc;
+  --accent: #88c0d0; --accent2: #81a1c1;
+  --card: rgba(76, 86, 106, .35); --line: rgba(216, 222, 233, .16);
+  --code: rgba(76, 86, 106, .45); --shadow: 0 6px 22px rgba(0, 0, 0, .28);
+  color-scheme: dark;
+}
+:root[data-palette="nord"][data-theme="light"] {
+  --bg: #eceff4; --bg2: #e5e9f0; --fg: #2e3440; --muted: #4c566a;
+  --accent: #5e81ac; --accent2: #8fbcbb;
+  --card: rgba(255, 255, 255, .7); --line: rgba(46, 52, 64, .16);
+  --code: rgba(216, 222, 233, .6); --shadow: 0 6px 22px rgba(46, 52, 64, .12);
+  color-scheme: light;
+}
+/* Nord ist flach: kein Verlaufshintergrund */
+:root[data-palette="nord"] body { background: var(--bg); }
+:root[data-palette="nord"]:not([data-theme="light"]) pre code span.fu { color: #88c0d0; }
+:root[data-palette="nord"]:not([data-theme="light"]) pre code span.kw { color: #81a1c1; }
+:root[data-palette="nord"]:not([data-theme="light"]) pre code span.st { color: #a3be8c; }
+:root[data-palette="nord"]:not([data-theme="light"]) pre code span.at,
+:root[data-palette="nord"]:not([data-theme="light"]) pre code span.va { color: #ebcb8b; }
+:root[data-palette="nord"]:not([data-theme="light"]) pre code span.co { color: #7b88a1; }
+:root[data-palette="nord"]:not([data-theme="light"]) pre code span.dv,
+:root[data-palette="nord"]:not([data-theme="light"]) pre code span.bn { color: #d08770; }

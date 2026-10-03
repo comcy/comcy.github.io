@@ -50,3 +50,10 @@ python3 -m http.server -d public 8000
 Das Theme "Modern Glass" steckt komplett in `static/style.css`, Dunkel ist der Standard, Hell wird über `data-theme="light"` am `<html>`-Element gesteuert.
 `static/site.js` wird auf jeder Seite geladen (Umschalter, Kopieren-Button). In einzelnen Posts kannst du zusätzlich
 rohes HTML mit Script-Blöcken direkt in die Markdown-Datei schreiben, pandoc reicht es unverändert durch.
+
+## Farbschemata
+
+Es gibt zwei Farbschemata: "Modern Glass" (Standard) und "Nord" (Farbpalette von
+[insanum/obsidian_nord](https://github.com/insanum/obsidian_nord)). Der Knopf mit der Palette in der Kopfleiste wechselt
+zwischen beiden, der Sonne/Mond-Knopf zwischen Hell und Dunkel. Beides wird im Browser gemerkt.
+Ein weiteres Schema ergänzt du in `static/style.css` mit einem Block `:root[data-palette="name"]`.
