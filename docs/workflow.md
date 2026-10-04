@@ -33,6 +33,7 @@ Leitidee: **OpenSpec hält fest, *was* gelten soll (Anforderungen als Specs). Is
 
 | Phase | Werkzeug | Ergebnis |
 | --- | --- | --- |
+| S. Setup (einmalig je Klon) | `sh scripts/setup` (geplant, Issue #14), bis dahin die Setup-Checkliste unten von Hand | Voraussetzungen erfüllt, `openspec/` und `.agents/` vorhanden, Agenten-Adapter lokal, Labels angelegt |
 | 0. Eingang | Issue anlegen, `/triage` | Triage-Zustand (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`) |
 | 1. Idee schärfen | `/grilling` oder `/openspec-explore` | Entscheidungen, Rest-Fragen |
 | 2. Anforderungen festhalten | `/openspec-propose <name>` | `openspec/changes/<name>/`: proposal, Delta-Specs, design, tasks |
@@ -62,15 +63,18 @@ Jede Person darf Phasen um eigene Schritte ergänzen (Haken), ohne den generisch
 1. Voraussetzungen (Tabelle oben) erfüllen.
 2. Git-Repo mit GitHub-Remote.
 3. `/setup-matt-pocock-skills`: `AGENTS.md` (oder `CLAUDE.md`), `docs/agents/{issue-tracker,triage-labels,domain}.md`.
-4. `openspec init --tools agents --language <de|en>` -> `openspec/` und `.agents/skills/` (6 OpenSpec-Skills, keine Commands).
-5. `openspec/config.yaml`: `rules.tasks` und `operations.apply|archive.guidance` auf den Workflow zeigen lassen (Beispiel: Teil B).
-6. Dieses Dokument ins Projekt legen.
-7. Eigene Haken einrichten (Teil C).
+4. `openspec init --tools agents --language <de|en>` einmal fürs Repo -> `openspec/` und `.agents/skills/` (6 OpenSpec-Skills, keine Commands). `.agents/` wird eingecheckt (agentenneutrale Basis).
+5. **Pro Person, lokal:** `openspec init --tools <dein Agent>` (z. B. `claude`, mehrere kommagetrennt). Die erzeugten Ordner (`.claude/` usw.) werden **nicht** eingecheckt, sondern in `.git/info/exclude` eingetragen, damit das Repo agentenneutral bleibt. Nach einem CLI-Update `openspec update`, danach neue Agent-Session.
+6. `openspec/config.yaml`: `rules.tasks` und `operations.apply|archive.guidance` auf den Workflow zeigen lassen (Beispiel: Teil B).
+7. Dieses Dokument ins Projekt legen.
+8. Optional: eigene Haken einrichten (siehe "Eigene Anpassungen", Beispiel: Teil C).
 
-Hinweis zur Skill-Erkennung: Claude Code sucht Projekt-Skills in `.claude/skills/`, nicht in `.agents/skills/`. Tauchen die `/openspec-*`-Skills nicht auf, lokal verlinken, ohne `.claude/` einzuchecken (**nicht getestet**):
+Warum lokal: Claude Code sucht Projekt-Skills nur in `.claude/skills/`, nicht in `.agents/skills/` (bestätigt: `/openspec-propose` blieb unbekannt). Die agentenspezifischen Dateien sind abgeleitet (`openspec update` erzeugt sie neu), jede Person braucht nur den Adapter für ihren Agenten. Ein Klon-Hook ist in Git nicht möglich, Hooks werden nicht mitgeklont. Deshalb gehört das Setup in ein Skript, das nach dem Klonen als fester erster Schritt läuft (geplant: `scripts/setup`, siehe Issue #14).
+
+Für Claude Code, einmalig nach dem Klonen:
 
 ```
-mkdir -p .claude/skills && for d in .agents/skills/openspec-*; do ln -s ../../$d .claude/skills/$(basename $d); done
+openspec init --tools claude --language de
 echo '.claude/' >> .git/info/exclude
 ```
 
@@ -82,7 +86,7 @@ echo '.claude/' >> .git/info/exclude
 - Commits: Conventional Commits, Secret-Scan vor dem Staging.
 - Geplante Changes: `timeline-startseite` (PR 1), `zweisprachig-de-en` (PR 2). Vorlage: `docs/plans/zweisprachig-und-timeline.md`.
 - Beobachtungen zur Einrichtung:
-  - `openspec init --tools claude` legte `.claude/skills/` (6 Skills) **und** `.claude/commands/opsx/` (6 Commands) an, dieselben sechs Abläufe doppelt. `--tools agents` legt nur `.agents/skills/` an (6 Skills, keine Commands). Wir nutzen `agents`, `.claude/` ist entfernt.
+  - `openspec init --tools claude` legte `.claude/skills/` (6 Skills) **und** `.claude/commands/opsx/` (6 Commands) an, dieselben sechs Abläufe doppelt. `--tools agents` legt nur `.agents/skills/` an (6 Skills, keine Commands). Wir nutzen `agents` im Repo und den Claude-Adapter nur lokal.
   - Die Skill-Namen ändern sich damit: `/opsx:propose` wird zu `/openspec-propose`, `/opsx:archive` zu `/openspec-archive-change` usw.
   - `openspec init` hat `AGENTS.md` nicht verändert.
   - Im Standardprofil sind `new`, `continue`, `ff`, `bulk-archive`, `verify`, `onboard` nicht aktiv (`openspec config profile`). `verify` wäre die OpenSpec-eigene Variante von Phase 4.
@@ -131,7 +135,7 @@ Idee: Phasen als Daten beschreiben (Eingang, Ergebnis, Prüfpunkt, Zustandswechs
 ### Umsetzungsreihenfolge (später, jeweils nur bei echtem Bedarf)
 
 1. **Agentenunabhängig und billig:** Git-Hooks über `git config core.hooksPath .githooks` (`commit-msg`: Conventional Commits, `pre-commit`: Secret-Scan), dazu ein CI-Job (Build, Validierung) und Branch-Schutz auf `master`. Wirkt für jede Person und jeden Agenten.
-2. **Skript für Zustandswechsel:** z. B. `scripts/flow start <issue>` legt `feature/<id>-<slug>` an und setzt `status:in-progress`, `scripts/flow review` setzt `status:in-review`. POSIX-Shell mit `gh`, wie der Rest des Repos.
+2. **Skripte:** `scripts/setup` (Issue #14, einmaliger Einstieg nach dem Klonen: Voraussetzungen, `openspec init`, Adapter, Labels) und danach ein Skript für Zustandswechsel: z. B. `scripts/flow start <issue>` legt `feature/<id>-<slug>` an und setzt `status:in-progress`, `scripts/flow review` setzt `status:in-review`. POSIX-Shell mit `gh`, wie der Rest des Repos.
 3. **Phasen als Daten:** eine Datei (z. B. `workflow.yaml`), aus der Doku, Diagramm, Labels und Setup erzeugt werden.
 4. **Nachvollziehbarkeit:** Protokoll der Skill-Aufrufe und `gh`-Schreibzugriffe, Testlauf des Prozesses an einer Beispielaufgabe.
 5. **Orchestrierung (nur bei unbeaufsichtigtem Betrieb):** siehe unten.
@@ -146,8 +150,9 @@ Dagegen: Es ist ein eigener Agent-Runner (Python, neue Abhängigkeit), er ersetz
 
 ## Offen / zu erproben
 
-- Taugt `tasks.md` als Eingabe für `/to-tickets`, oder schneidet der Skill besser aus `proposal` + Specs?
+- `tasks.md` ist nach Schichten geordnet, `/to-tickets` verlangt vertikale Scheiben: `tasks.md` war Eingabe, nicht Ergebnis. Task-Regel in `openspec/config.yaml` auf vertikale Scheiben umstellen?
+- Sub-Issues und `blocked_by` per `gh api` anlegen: bei Ticket #20 fehlte beim ersten Lauf eine Beziehung. Ein Skript sollte nach dem Anlegen prüfen, dass alle Beziehungen gesetzt sind.
 - Brauchen wir Phase 3 bei einem Ein-Personen-Repo, oder reicht `tasks.md` + `/implement`?
 - Lohnt OpenSpecs `verify` zusätzlich zu `code-review`?
-- Erkennt Claude Code die Skills aus `.agents/skills/` ohne Symlink?
+- ~~Erkennt Claude Code die Skills aus `.agents/skills/`?~~ Nein, deshalb lokaler Adapter pro Person (siehe Setup-Checkliste).
 - Wie viel Overhead ist ein Change für eine kleine Änderung? (Schwelle definieren.)

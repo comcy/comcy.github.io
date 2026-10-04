@@ -33,7 +33,9 @@ Erster Versuch: `openspec init --tools claude --language de`. Das legte `openspe
 
 Zweiter Versuch: `--tools agents` legt nur `.agents/skills/` an (6 Skills, keine Commands). Die Namen ändern sich dabei: `/opsx:propose` wird `/openspec-propose`, `/opsx:archive` wird `/openspec-archive-change`. `AGENTS.md` bleibt in beiden Fällen unberührt. Standardprofil ohne `verify`, `ff`, `new`.
 
-Offene Frage: Claude Code liest Projekt-Skills aus `.claude/skills/`. Ob `.agents/skills/` ohne lokalen Symlink erkannt wird, ist noch zu prüfen.
+Auflösung der offenen Frage: Claude Code liest Projekt-Skills aus `.claude/skills/`. Beim ersten echten Aufruf kam `Unknown skill: openspec-propose`, `.agents/skills/` wird also nicht erkannt. Die `SKILL.md` ist aber nur Text: Ich habe sie gelesen und den Ablauf von Hand mit der OpenSpec-CLI nachvollzogen (`openspec new change`, `status`, `instructions`, `validate`). Das ging ohne Skill, nur mit weniger Komfort. Fazit für den Prozess: Skills sind bequem, die CLI mit ihrem JSON ist die eigentliche Schnittstelle.
+
+Lösung für das Repo: Die agentenneutrale Basis `.agents/` bleibt eingecheckt, den Adapter für den eigenen Agenten erzeugt jede Person lokal (`openspec init --tools claude`) und trägt den Ordner in `.git/info/exclude` ein. So bleibt das Repo frei von agentenspezifischen Dateien, und ein anderer Agent kommt ohne Repo-Änderung dazu. Einen Klon-Hook gibt es in Git nicht (Hooks werden nicht mitgeklont), deshalb soll ein Setup-Skript der feste erste Schritt nach dem Klonen werden (Issue #14).
 
 ## Workflow definieren
 
@@ -60,6 +62,14 @@ Beobachtung: Der Ablauf steht in Prosa (`AGENTS.md`, `workflow.md`, Skill-Texte)
 Leiter von weich nach hart: Prosa, Skill, Skill-Konfiguration, Skript, Hook, CI mit Branch-Schutz. Das Modell urteilt, Skripte und CI erzwingen Übergänge. Nachvollziehbar wird es über Label-Zeitstempel, Session-Links in Commits, protokollierende Hooks und einen Testlauf an einer Beispielaufgabe. Details in `docs/workflow.md`, Abschnitt "Später: Verlässlichkeit und Nachvollziehbarkeit". Noch nicht umgesetzt.
 
 Reihenfolge, die ich verfolge: erst agentenunabhängige Mittel (Git-Hooks, CI, Branch-Schutz), dann ein Skript für Zustandswechsel, dann Phasen als Daten, zuletzt Orchestrierung. Agenten-Hooks sind an den Agenten gebunden, harte Regeln gehören deshalb in Git-Hooks und CI. LangGraph (Ablauf als Graph, Modell nur im Knoten) wäre die härteste Stufe, lohnt aber erst bei unbeaufsichtigtem Betrieb. Leichter davor: GitHub Actions auf Label-Ereignissen.
+
+## Erster Change: timeline-startseite
+
+- Vorher: Feature-Issue (#13, `status:in-refinement`) und Branch `feature/13-timeline-startseite` von `master`.
+- Ergebnis von `propose`: Proposal, zwei Specs (`timeline-entries`, `timeline-view` mit Szenarien), Design mit Entscheidungen und Annahmen, Tasks mit Prüfschritt je Task. `openspec validate --strict` grün.
+- Aus der Grilling-Runde davor (12 Fragen) entstand der Plan, daraus der Change fast ohne Rückfragen. Die Annahmen stehen offen im Design zur Prüfung.
+- `/to-tickets` ließ sich von Hand nach `SKILL.md` ausführen: Die Tasks (nach Schichten geordnet) wurden zu 5 vertikalen Scheiben umgeschnitten, ich habe sie vorgestellt, du hast sie bestätigt, erst dann habe ich veröffentlicht. Ergebnis: 5 Sub-Issues von #13 (#16 bis #20) mit `ready-for-agent` und nativen `blocked_by`-Beziehungen (Sub-Issue- und Dependency-API von GitHub per `gh api`, funktionierte beim ersten Versuch bis auf eine verlorene Beziehung, die ich nachträglich setzen musste: dort lohnt später eine Prüfung im Skript).
+- Beobachtung: `tasks.md` aus OpenSpec ist nach Schichten geordnet (Daten, Ausgabe, Layout), `/to-tickets` verlangt vertikale Scheiben. Beides zusammen braucht eine Übersetzung, die Tasks sind Eingabe, nicht Ergebnis. Eventuell die Task-Regel in `openspec/config.yaml` anpassen ("vertikale Scheiben statt Schichten").
 
 ## Noch zu dokumentieren
 
