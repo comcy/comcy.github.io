@@ -37,7 +37,7 @@ Offene Frage: Claude Code liest Projekt-Skills aus `.claude/skills/`. Ob `.agent
 
 ## Workflow definieren
 
-Entscheidung: OpenSpec hält fest, *was* gelten soll, GitHub-Issues, `tdd` und `code-review` erledigen das Bauen. Beschrieben in `docs/workflow.md`: Teil A generisch mit Voraussetzungen (später Basis für ein Setup-Skript), Teil B repo-spezifisch, Teil C persönliche Haken (z. B. Verlauf ins eigene Wissenssystem). Verdrahtet über `rules` und `operations.*.guidance` in `openspec/config.yaml`.
+Entscheidung: OpenSpec hält fest, *was* gelten soll, GitHub-Issues, `tdd` und `code-review` erledigen das Bauen. Beschrieben in `docs/workflow.md`: Teil A generisch mit Voraussetzungen (später Basis für ein Setup-Skript), Teil B repo-spezifisch; persönliche Anpassungen sind als Haken vorgesehen, stehen aber nicht im Dokument. Verdrahtet über `rules` und `operations.*.guidance` in `openspec/config.yaml`.
 
 ## Das Modell
 
