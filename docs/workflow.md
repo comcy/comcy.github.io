@@ -33,6 +33,7 @@ Leitidee: **OpenSpec hält fest, *was* gelten soll (Anforderungen als Specs). Is
 
 | Phase | Werkzeug | Ergebnis |
 | --- | --- | --- |
+| S. Setup (einmalig je Klon) | `sh scripts/setup` (geplant, Issue #14), bis dahin die Setup-Checkliste unten von Hand | Voraussetzungen erfüllt, `openspec/` und `.agents/` vorhanden, Agenten-Adapter lokal, Labels angelegt |
 | 0. Eingang | Issue anlegen, `/triage` | Triage-Zustand (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`) |
 | 1. Idee schärfen | `/grilling` oder `/openspec-explore` | Entscheidungen, Rest-Fragen |
 | 2. Anforderungen festhalten | `/openspec-propose <name>` | `openspec/changes/<name>/`: proposal, Delta-Specs, design, tasks |
@@ -134,7 +135,7 @@ Idee: Phasen als Daten beschreiben (Eingang, Ergebnis, Prüfpunkt, Zustandswechs
 ### Umsetzungsreihenfolge (später, jeweils nur bei echtem Bedarf)
 
 1. **Agentenunabhängig und billig:** Git-Hooks über `git config core.hooksPath .githooks` (`commit-msg`: Conventional Commits, `pre-commit`: Secret-Scan), dazu ein CI-Job (Build, Validierung) und Branch-Schutz auf `master`. Wirkt für jede Person und jeden Agenten.
-2. **Skript für Zustandswechsel:** z. B. `scripts/flow start <issue>` legt `feature/<id>-<slug>` an und setzt `status:in-progress`, `scripts/flow review` setzt `status:in-review`. POSIX-Shell mit `gh`, wie der Rest des Repos.
+2. **Skripte:** `scripts/setup` (Issue #14, einmaliger Einstieg nach dem Klonen: Voraussetzungen, `openspec init`, Adapter, Labels) und danach ein Skript für Zustandswechsel: z. B. `scripts/flow start <issue>` legt `feature/<id>-<slug>` an und setzt `status:in-progress`, `scripts/flow review` setzt `status:in-review`. POSIX-Shell mit `gh`, wie der Rest des Repos.
 3. **Phasen als Daten:** eine Datei (z. B. `workflow.yaml`), aus der Doku, Diagramm, Labels und Setup erzeugt werden.
 4. **Nachvollziehbarkeit:** Protokoll der Skill-Aufrufe und `gh`-Schreibzugriffe, Testlauf des Prozesses an einer Beispielaufgabe.
 5. **Orchestrierung (nur bei unbeaufsichtigtem Betrieb):** siehe unten.
@@ -149,7 +150,8 @@ Dagegen: Es ist ein eigener Agent-Runner (Python, neue Abhängigkeit), er ersetz
 
 ## Offen / zu erproben
 
-- Taugt `tasks.md` als Eingabe für `/to-tickets`, oder schneidet der Skill besser aus `proposal` + Specs?
+- `tasks.md` ist nach Schichten geordnet, `/to-tickets` verlangt vertikale Scheiben: `tasks.md` war Eingabe, nicht Ergebnis. Task-Regel in `openspec/config.yaml` auf vertikale Scheiben umstellen?
+- Sub-Issues und `blocked_by` per `gh api` anlegen: bei Ticket #20 fehlte beim ersten Lauf eine Beziehung. Ein Skript sollte nach dem Anlegen prüfen, dass alle Beziehungen gesetzt sind.
 - Brauchen wir Phase 3 bei einem Ein-Personen-Repo, oder reicht `tasks.md` + `/implement`?
 - Lohnt OpenSpecs `verify` zusätzlich zu `code-review`?
 - ~~Erkennt Claude Code die Skills aus `.agents/skills/`?~~ Nein, deshalb lokaler Adapter pro Person (siehe Setup-Checkliste).
