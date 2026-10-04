@@ -67,7 +67,7 @@ Jede Person darf Phasen um eigene Schritte ergänzen (Haken), ohne den generisch
 6. Dieses Dokument ins Projekt legen.
 7. Eigene Haken einrichten (Teil C).
 
-Hinweis zur Skill-Erkennung: Claude Code sucht Projekt-Skills in `.claude/skills/`, nicht in `.agents/skills/`. Tauchen die `/openspec-*`-Skills nicht auf, lokal verlinken, ohne `.claude/` einzuchecken (**nicht getestet**):
+Hinweis zur Skill-Erkennung: Claude Code sucht Projekt-Skills in `.claude/skills/`, nicht in `.agents/skills/` (bestätigt: `/openspec-propose` blieb unbekannt). Lokal verlinken, ohne `.claude/` einzuchecken (der Symlink selbst ist **noch nicht getestet**):
 
 ```
 mkdir -p .claude/skills && for d in .agents/skills/openspec-*; do ln -s ../../$d .claude/skills/$(basename $d); done
