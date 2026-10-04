@@ -68,7 +68,8 @@ Reihenfolge, die ich verfolge: erst agentenunabhängige Mittel (Git-Hooks, CI, B
 - Vorher: Feature-Issue (#13, `status:in-refinement`) und Branch `feature/13-timeline-startseite` von `master`.
 - Ergebnis von `propose`: Proposal, zwei Specs (`timeline-entries`, `timeline-view` mit Szenarien), Design mit Entscheidungen und Annahmen, Tasks mit Prüfschritt je Task. `openspec validate --strict` grün.
 - Aus der Grilling-Runde davor (12 Fragen) entstand der Plan, daraus der Change fast ohne Rückfragen. Die Annahmen stehen offen im Design zur Prüfung.
-- Zu beobachten: Passen die Tasks als Eingabe für `/to-tickets`? Wie lange dauert Review der Specs?
+- `/to-tickets` ließ sich von Hand nach `SKILL.md` ausführen: Die Tasks (nach Schichten geordnet) wurden zu 5 vertikalen Scheiben umgeschnitten, ich habe sie vorgestellt, du hast sie bestätigt, erst dann habe ich veröffentlicht. Ergebnis: 5 Sub-Issues von #13 (#16 bis #20) mit `ready-for-agent` und nativen `blocked_by`-Beziehungen (Sub-Issue- und Dependency-API von GitHub per `gh api`, funktionierte beim ersten Versuch bis auf eine verlorene Beziehung, die ich nachträglich setzen musste: dort lohnt später eine Prüfung im Skript).
+- Beobachtung: `tasks.md` aus OpenSpec ist nach Schichten geordnet (Daten, Ausgabe, Layout), `/to-tickets` verlangt vertikale Scheiben. Beides zusammen braucht eine Übersetzung, die Tasks sind Eingabe, nicht Ergebnis. Eventuell die Task-Regel in `openspec/config.yaml` anpassen ("vertikale Scheiben statt Schichten").
 
 ## Noch zu dokumentieren
 
