@@ -128,3 +128,74 @@ div.sourceCode { position: relative; }
 :root[data-palette="nord"]:not([data-theme="light"]) pre code span.co { color: #7b88a1; }
 :root[data-palette="nord"]:not([data-theme="light"]) pre code span.dv,
 :root[data-palette="nord"]:not([data-theme="light"]) pre code span.bn { color: #d08770; }
+
+/* Themes "Neon" und "Pastell": dieselben Akzentfarben (Pink, Gelb, Grün, Lila), einmal knallig auf Dunkelblau-zu-Lila, einmal in Pastell.
+   --accent = Pink (Links, Fokus), --accent2 = Gelb bzw. Rosé (Hover), --accent3 = Grün (Tags), --accent4 = Lila (Zitate, Markierung). */
+:root[data-palette="neon"] {
+  --bg: #0a1240; --bg2: #3a0f6e; --fg: #f4efff; --muted: #b9acea;
+  --accent: #ff4fd8; --accent2: #faff4f; --accent3: #3dff9a; --accent4: #b86bff;
+  --card: rgba(255, 255, 255, .07); --line: rgba(184, 107, 255, .35);
+  --code: rgba(10, 18, 64, .55); --shadow: 0 8px 30px rgba(10, 4, 40, .5);
+  color-scheme: dark;
+}
+:root[data-palette="neon"][data-theme="light"] {
+  --bg: #f7f1ff; --bg2: #ffe6fa; --fg: #1d1240; --muted: #5d4f8e;
+  --accent: #c2108f; --accent2: #6d28d9; --accent3: #0b8a4d; --accent4: #8b3df0;
+  --card: rgba(255, 255, 255, .7); --line: rgba(139, 61, 240, .28);
+  --code: rgba(139, 61, 240, .08); --shadow: 0 8px 30px rgba(90, 40, 160, .15);
+  color-scheme: light;
+}
+:root[data-palette="pastel"] {
+  --bg: #1e1a33; --bg2: #2e2350; --fg: #f4eefb; --muted: #c3b8dd;
+  --accent: #ffb8e8; --accent2: #c9b6ff; --accent3: #b6f2cf; --accent4: #fff0a6;
+  --card: rgba(255, 255, 255, .07); --line: rgba(201, 182, 255, .3);
+  --code: rgba(255, 255, 255, .09); --shadow: 0 8px 30px rgba(10, 6, 30, .4);
+  color-scheme: dark;
+}
+:root[data-palette="pastel"][data-theme="light"] {
+  --bg: #fff7fd; --bg2: #edf3ff; --fg: #3b3556; --muted: #6b648c;
+  --accent: #a24fc7; --accent2: #c94a86; --accent3: #2f8a62; --accent4: #f2d95c;
+  --card: rgba(255, 255, 255, .72); --line: rgba(162, 79, 199, .22);
+  --code: rgba(162, 79, 199, .08); --shadow: 0 8px 30px rgba(120, 90, 170, .14);
+  color-scheme: light;
+}
+:root[data-palette="neon"] body, :root[data-palette="pastel"] body {
+  background:
+    radial-gradient(55rem 32rem at 90% -10%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 62%),
+    radial-gradient(45rem 28rem at -10% 12%, color-mix(in srgb, var(--accent3) 18%, transparent), transparent 62%),
+    linear-gradient(160deg, var(--bg), var(--bg2)) fixed;
+}
+:root[data-palette="neon"] .tag, :root[data-palette="pastel"] .tag {
+  color: var(--accent3); background: color-mix(in srgb, var(--accent3) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent3) 45%, transparent);
+}
+:root[data-palette="neon"] blockquote, :root[data-palette="pastel"] blockquote { border-left-color: var(--accent4); }
+:root[data-palette="neon"] .posts li > a:focus-visible::after,
+:root[data-palette="pastel"] .posts li > a:focus-visible::after { outline-color: var(--accent2); }
+:root[data-palette="neon"] ::selection, :root[data-palette="pastel"] ::selection {
+  background: color-mix(in srgb, var(--accent4) 45%, transparent); color: inherit;
+}
+:root[data-palette="neon"]:not([data-theme="light"]) .posts li:hover { box-shadow: 0 0 0 1px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 45%, transparent); }
+/* Syntaxfarben im Dunkelmodus */
+:root[data-palette="neon"]:not([data-theme="light"]) pre code span.fu { color: #3dff9a; }
+:root[data-palette="neon"]:not([data-theme="light"]) pre code span.kw { color: #ff4fd8; }
+:root[data-palette="neon"]:not([data-theme="light"]) pre code span.st { color: #faff4f; }
+:root[data-palette="neon"]:not([data-theme="light"]) pre code span.at,
+:root[data-palette="neon"]:not([data-theme="light"]) pre code span.va { color: #b86bff; }
+:root[data-palette="neon"]:not([data-theme="light"]) pre code span.co { color: #8f84c6; }
+:root[data-palette="neon"]:not([data-theme="light"]) pre code span.dv,
+:root[data-palette="neon"]:not([data-theme="light"]) pre code span.bn { color: #ff9ad5; }
+:root[data-palette="pastel"]:not([data-theme="light"]) pre code span.fu { color: #b6f2cf; }
+:root[data-palette="pastel"]:not([data-theme="light"]) pre code span.kw { color: #ffb8e8; }
+:root[data-palette="pastel"]:not([data-theme="light"]) pre code span.st { color: #fff0a6; }
+:root[data-palette="pastel"]:not([data-theme="light"]) pre code span.at,
+:root[data-palette="pastel"]:not([data-theme="light"]) pre code span.va { color: #c9b6ff; }
+:root[data-palette="pastel"]:not([data-theme="light"]) pre code span.co { color: #9a90bd; }
+:root[data-palette="pastel"]:not([data-theme="light"]) pre code span.dv,
+:root[data-palette="pastel"]:not([data-theme="light"]) pre code span.bn { color: #ffcfa6; }
+
+/* Kurzer Hinweis mit dem Namen des gewählten Farbschemas */
+.toast { position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%); z-index: 20;
+  padding: .5rem 1rem; border: 1px solid var(--line); border-radius: 999px; background: var(--card);
+  color: var(--fg); font-size: .9rem; box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
