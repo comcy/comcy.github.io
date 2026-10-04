@@ -5,8 +5,7 @@ Stand: 2026-10-04. **v0, noch nicht an einem echten Change erprobt.** Wird nach 
 Aufbau:
 - **Teil A** ist projektunabhängig und generisch. Er soll später in ein eigenes Entwickler-Repo wandern (Setup-Skript wie `setup-matt-pocock-skills`).
 - **Teil B** sind die Eigenheiten dieses Repos.
-
-Persönliche Anpassungen gehören nicht in dieses Dokument, siehe "Eigene Anpassungen".
+- **Teil C** sind persönliche Anpassungen ("user custom"). Sie hängen als Haken an Phasen aus Teil A, gehören aber nie in Teil A selbst.
 
 ## Teil A: Generischer Ablauf
 
@@ -50,11 +49,11 @@ Regeln:
 - Bei sehr großem Vorhaben (mehr als eine Session) vorher `/wayfinder`: Karte aus Entscheidungs-Tickets, danach je Entscheidung ein Change.
 - Unsicher, welcher Skill passt: `/ask-matt`.
 - Reiner Bugfix ohne Verhaltensänderung braucht keinen Change: `diagnosing-bugs` + `tdd` + Issue.
-- Commit-Konvention und Secret-Scan vor dem Staging festlegen (Beispiel: Teil B).
+- Commit-Konvention und Secret-Scan vor dem Staging festlegen (Teil B/C).
 
 ### Eigene Anpassungen
 
-Jede Person darf Phasen um eigene Schritte ergänzen (Haken), ohne den generischen Ablauf zu ändern. Ein Haken benennt die Phase, nach der er läuft, und beschreibt den Schritt. Beispiele: Verlauf in ein persönliches Wissenssystem schreiben (nach Phase 6), eigene Branch-Regeln (Phase 4), Benachrichtigungen. Die konkreten Haken pflegt jede Person außerhalb dieses Dokuments, es ist nur die Stelle dafür vorgesehen.
+Jede Person darf Phasen um eigene Schritte ergänzen (Haken), ohne den generischen Ablauf zu ändern. Regel: Der Haken benennt die Phase, nach der er läuft, und beschreibt den Schritt. Beispiele für Haken: Verlauf in ein persönliches Wissenssystem schreiben (nach Phase 6), eigene Branch-Regeln (Phase 4), Benachrichtigungen. Die konkreten Haken stehen in Teil C.
 
 ### Setup-Checkliste (Basis für ein späteres Skript)
 
@@ -64,7 +63,7 @@ Jede Person darf Phasen um eigene Schritte ergänzen (Haken), ohne den generisch
 4. `openspec init --tools agents --language <de|en>` -> `openspec/` und `.agents/skills/` (6 OpenSpec-Skills, keine Commands).
 5. `openspec/config.yaml`: `rules.tasks` und `operations.apply|archive.guidance` auf den Workflow zeigen lassen (Beispiel: Teil B).
 6. Dieses Dokument ins Projekt legen.
-7. Optional: eigene Haken einrichten (siehe "Eigene Anpassungen").
+7. Eigene Haken einrichten (Teil C).
 
 Hinweis zur Skill-Erkennung: Claude Code sucht Projekt-Skills in `.claude/skills/`, nicht in `.agents/skills/`. Tauchen die `/openspec-*`-Skills nicht auf, lokal verlinken, ohne `.claude/` einzuchecken (**nicht getestet**):
 
@@ -87,6 +86,16 @@ echo '.claude/' >> .git/info/exclude
   - Im Standardprofil sind `new`, `continue`, `ff`, `bulk-archive`, `verify`, `onboard` nicht aktiv (`openspec config profile`). `verify` wäre die OpenSpec-eigene Variante von Phase 4.
   - Plugin `mattpocock-skills` 1.2.3 enthält alles nötige. Umbenannt: `to-issues` -> `to-tickets`, `to-prd` -> `to-spec`. `triage`, `to-tickets`, `to-spec`, `implement`, `wayfinder`, `ask-matt` sind nur per Eingabe aufrufbar (`disable-model-invocation`) und stehen deshalb nicht in der Skill-Liste des Modells.
   - Die Kopie von `setup-matt-pocock-skills` unter `~/.claude/skills/` ist älter und spricht noch von `to-issues`/`to-prd`.
+
+## Teil C: Eigene Anpassungen (Chris)
+
+Haken an den generischen Phasen. Nur persönlich, nicht Teil des generischen Ablaufs:
+
+| Nach Phase | Haken |
+| --- | --- |
+| Setup | Repo als Bare-Repo mit Git-Worktrees auschecken (ein Worktree je Branch) |
+| 4 (Commit) | Commits als Conventional Commits mit festem Autor, Secret-Scan vor dem Staging (globale Regeln) |
+| 6 | Verlauf und Referenz zusätzlich ins persönliche Wissenssystem (Vault, `Projects/<name>/`: Plan, Log) schreiben |
 
 ## Erweiterungspunkte (bewusst noch nicht ausgebaut)
 
