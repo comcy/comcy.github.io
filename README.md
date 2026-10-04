@@ -55,7 +55,6 @@ rohes HTML mit Script-Blöcken direkt in die Markdown-Datei schreiben, pandoc re
 
 Es gibt vier Farbschemata: "Modern Glass" (Standard), "Nord" (Farbpalette von
 [insanum/obsidian_nord](https://github.com/insanum/obsidian_nord)), "Neon" (Dunkelblau zu Lila mit Neon-Pink, -Gelb, -Grün und Lila)
-und "Pastell" (dieselben Akzente in Pastell). Der Knopf mit der Palette in der Kopfleiste schaltet reihum weiter und wählt
-dabei den passenden Modus vor (Pastell startet hell, die anderen dunkel). Der Sonne/Mond-Knopf wechselt danach zwischen Hell und
-Dunkel. Beides wird im Browser gemerkt. Die Liste der Schemata steht in `static/site.js`.
+und "Pastell" (dieselben Akzente in Pastell). Der Knopf mit der Palette (🎨) in der Kopfleiste öffnet eine Auswahl mit allen Schemata, jeweils in Dunkel und Hell (acht Varianten).
+Der Sonne/Mond-Knopf wechselt wie gehabt schnell zwischen Hell und Dunkel. Beides wird im Browser gemerkt. Die Liste der Schemata steht in `static/site.js`.
 Ein weiteres Schema ergänzt du in `static/style.css` mit einem Block `:root[data-palette="name"]`.

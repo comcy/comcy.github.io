@@ -1,4 +1,4 @@
-// Hell/Dunkel-Umschalter (Standard Dunkel) und Farbschema-Umschalter (Glass, Nord, Neon, Pastell), beide merken sich die Wahl, Menü-Button für schmale Bildschirme, Kopieren-Button für Code-Blöcke
+// Hell/Dunkel-Umschalter (Standard Dunkel) und Farbschema-Auswahl (Glass, Nord, Neon, Pastell, je Dunkel und Hell), beide merken sich die Wahl, Menü-Button für schmale Bildschirme, Kopieren-Button für Code-Blöcke
 (function () {
   var root = document.documentElement;
   try {
@@ -21,42 +21,87 @@
       });
     }
 
-    // Farbschemata: der Knopf schaltet reihum weiter und wählt jeweils den passenden Hell/Dunkel-Modus vor
+    // Farbschemata: Der Palette-Knopf öffnet eine Auswahl mit allen Schemata, je in Dunkel und Hell
     var PALETTES = [
-      { id: 'glass', name: 'Modern Glass', mode: 'dark' },
-      { id: 'nord', name: 'Nord', mode: 'dark' },
-      { id: 'neon', name: 'Neon', mode: 'dark' },
-      { id: 'pastel', name: 'Pastell', mode: 'light' }
+      { id: 'glass', name: 'Modern Glass', dots: ['#8b8bff', '#2dd4df', '#0d1020'] },
+      { id: 'nord', name: 'Nord', dots: ['#88c0d0', '#81a1c1', '#2e3440'] },
+      { id: 'neon', name: 'Neon', dots: ['#ff4fd8', '#faff4f', '#3dff9a', '#b86bff'] },
+      { id: 'pastel', name: 'Pastell', dots: ['#ffb8e8', '#fff0a6', '#b6f2cf', '#c9b6ff'] }
     ];
-    var currentPalette = function () {
-      for (var i = 0; i < PALETTES.length; i++) {
-        if (PALETTES[i].id === (root.dataset.palette || 'glass')) return i;
-      }
-      return 0;
+    var paletteId = function () { return root.dataset.palette || 'glass'; };
+    var paletteName = function () {
+      for (var i = 0; i < PALETTES.length; i++) if (PALETTES[i].id === paletteId()) return PALETTES[i].name;
+      return PALETTES[0].name;
+    };
+    var apply = function (id, mode) {
+      root.dataset.palette = id;
+      root.dataset.theme = mode;
+      try {
+        localStorage.setItem('palette', id);
+        localStorage.setItem('theme', mode);
+      } catch (e) {}
+      syncTheme();
     };
     var paletteBtn = document.getElementById('palette-toggle');
+    var panel = null;
+    var closePanel = function () {
+      if (!panel) return;
+      panel.remove();
+      panel = null;
+      paletteBtn.setAttribute('aria-expanded', 'false');
+    };
     if (paletteBtn) {
-      var label = function () {
-        paletteBtn.title = 'Farbschema: ' + PALETTES[currentPalette()].name + ' (wechseln)';
+      paletteBtn.setAttribute('aria-expanded', 'false');
+      paletteBtn.title = 'Farbschema wählen';
+      var renderPanel = function () {
+        if (panel) panel.remove();
+        panel = document.createElement('div');
+        panel.className = 'theme-panel';
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-label', 'Farbschema wählen');
+        PALETTES.forEach(function (p) {
+          var row = document.createElement('div');
+          row.className = 'theme-row';
+          var dots = document.createElement('span');
+          dots.className = 'theme-dots';
+          p.dots.forEach(function (c) {
+            var d = document.createElement('i');
+            d.style.background = c;
+            dots.appendChild(d);
+          });
+          var name = document.createElement('span');
+          name.className = 'theme-name';
+          name.textContent = p.name;
+          row.appendChild(dots);
+          row.appendChild(name);
+          [['dark', 'Dunkel'], ['light', 'Hell']].forEach(function (m) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'theme-opt';
+            b.textContent = m[1];
+            var active = paletteId() === p.id && (root.dataset.theme === 'light') === (m[0] === 'light');
+            if (active) { b.classList.add('active'); b.setAttribute('aria-pressed', 'true'); }
+            else b.setAttribute('aria-pressed', 'false');
+            b.addEventListener('click', function () {
+              apply(p.id, m[0]);
+              renderPanel();
+            });
+            row.appendChild(b);
+          });
+          panel.appendChild(row);
+        });
+        document.querySelector('header.site').appendChild(panel);
+        paletteBtn.setAttribute('aria-expanded', 'true');
       };
-      label();
-      paletteBtn.addEventListener('click', function () {
-        var next = PALETTES[(currentPalette() + 1) % PALETTES.length];
-        root.dataset.palette = next.id;
-        root.dataset.theme = next.mode;
-        try {
-          localStorage.setItem('palette', next.id);
-          localStorage.setItem('theme', next.mode);
-        } catch (e) {}
-        syncTheme();
-        label();
-        // kurzer Hinweis mit dem Namen, damit man auch auf dem Handy sieht, welches Schema aktiv ist
-        var toast = document.createElement('div');
-        toast.className = 'toast';
-        toast.setAttribute('role', 'status');
-        toast.textContent = next.name;
-        document.body.appendChild(toast);
-        setTimeout(function () { toast.remove(); }, 1600);
+      paletteBtn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        if (panel) closePanel(); else renderPanel();
+      });
+      document.addEventListener('click', function (ev) {
+        if (panel && !panel.contains(ev.target) && ev.target !== paletteBtn) closePanel();
+      });
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && panel) { closePanel(); paletteBtn.focus(); }
       });
     }
 
