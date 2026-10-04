@@ -62,15 +62,18 @@ Jede Person darf Phasen um eigene Schritte ergänzen (Haken), ohne den generisch
 1. Voraussetzungen (Tabelle oben) erfüllen.
 2. Git-Repo mit GitHub-Remote.
 3. `/setup-matt-pocock-skills`: `AGENTS.md` (oder `CLAUDE.md`), `docs/agents/{issue-tracker,triage-labels,domain}.md`.
-4. `openspec init --tools agents --language <de|en>` -> `openspec/` und `.agents/skills/` (6 OpenSpec-Skills, keine Commands).
-5. `openspec/config.yaml`: `rules.tasks` und `operations.apply|archive.guidance` auf den Workflow zeigen lassen (Beispiel: Teil B).
-6. Dieses Dokument ins Projekt legen.
-7. Eigene Haken einrichten (Teil C).
+4. `openspec init --tools agents --language <de|en>` einmal fürs Repo -> `openspec/` und `.agents/skills/` (6 OpenSpec-Skills, keine Commands). `.agents/` wird eingecheckt (agentenneutrale Basis).
+5. **Pro Person, lokal:** `openspec init --tools <dein Agent>` (z. B. `claude`, mehrere kommagetrennt). Die erzeugten Ordner (`.claude/` usw.) werden **nicht** eingecheckt, sondern in `.git/info/exclude` eingetragen, damit das Repo agentenneutral bleibt. Nach einem CLI-Update `openspec update`, danach neue Agent-Session.
+6. `openspec/config.yaml`: `rules.tasks` und `operations.apply|archive.guidance` auf den Workflow zeigen lassen (Beispiel: Teil B).
+7. Dieses Dokument ins Projekt legen.
+8. Optional: eigene Haken einrichten (siehe "Eigene Anpassungen", Beispiel: Teil C).
 
-Hinweis zur Skill-Erkennung: Claude Code sucht Projekt-Skills in `.claude/skills/`, nicht in `.agents/skills/` (bestätigt: `/openspec-propose` blieb unbekannt). Lokal verlinken, ohne `.claude/` einzuchecken (der Symlink selbst ist **noch nicht getestet**):
+Warum lokal: Claude Code sucht Projekt-Skills nur in `.claude/skills/`, nicht in `.agents/skills/` (bestätigt: `/openspec-propose` blieb unbekannt). Die agentenspezifischen Dateien sind abgeleitet (`openspec update` erzeugt sie neu), jede Person braucht nur den Adapter für ihren Agenten. Ein Klon-Hook ist in Git nicht möglich, Hooks werden nicht mitgeklont. Deshalb gehört das Setup in ein Skript, das nach dem Klonen als fester erster Schritt läuft (geplant: `scripts/setup`, siehe Issue #14).
+
+Für Claude Code, einmalig nach dem Klonen:
 
 ```
-mkdir -p .claude/skills && for d in .agents/skills/openspec-*; do ln -s ../../$d .claude/skills/$(basename $d); done
+openspec init --tools claude --language de
 echo '.claude/' >> .git/info/exclude
 ```
 
@@ -82,7 +85,7 @@ echo '.claude/' >> .git/info/exclude
 - Commits: Conventional Commits, Secret-Scan vor dem Staging.
 - Geplante Changes: `timeline-startseite` (PR 1), `zweisprachig-de-en` (PR 2). Vorlage: `docs/plans/zweisprachig-und-timeline.md`.
 - Beobachtungen zur Einrichtung:
-  - `openspec init --tools claude` legte `.claude/skills/` (6 Skills) **und** `.claude/commands/opsx/` (6 Commands) an, dieselben sechs Abläufe doppelt. `--tools agents` legt nur `.agents/skills/` an (6 Skills, keine Commands). Wir nutzen `agents`, `.claude/` ist entfernt.
+  - `openspec init --tools claude` legte `.claude/skills/` (6 Skills) **und** `.claude/commands/opsx/` (6 Commands) an, dieselben sechs Abläufe doppelt. `--tools agents` legt nur `.agents/skills/` an (6 Skills, keine Commands). Wir nutzen `agents` im Repo und den Claude-Adapter nur lokal.
   - Die Skill-Namen ändern sich damit: `/opsx:propose` wird zu `/openspec-propose`, `/opsx:archive` zu `/openspec-archive-change` usw.
   - `openspec init` hat `AGENTS.md` nicht verändert.
   - Im Standardprofil sind `new`, `continue`, `ff`, `bulk-archive`, `verify`, `onboard` nicht aktiv (`openspec config profile`). `verify` wäre die OpenSpec-eigene Variante von Phase 4.
@@ -149,5 +152,5 @@ Dagegen: Es ist ein eigener Agent-Runner (Python, neue Abhängigkeit), er ersetz
 - Taugt `tasks.md` als Eingabe für `/to-tickets`, oder schneidet der Skill besser aus `proposal` + Specs?
 - Brauchen wir Phase 3 bei einem Ein-Personen-Repo, oder reicht `tasks.md` + `/implement`?
 - Lohnt OpenSpecs `verify` zusätzlich zu `code-review`?
-- Erkennt Claude Code die Skills aus `.agents/skills/` ohne Symlink?
+- ~~Erkennt Claude Code die Skills aus `.agents/skills/`?~~ Nein, deshalb lokaler Adapter pro Person (siehe Setup-Checkliste).
 - Wie viel Overhead ist ein Change für eine kleine Änderung? (Schwelle definieren.)

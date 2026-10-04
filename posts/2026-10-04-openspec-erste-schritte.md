@@ -35,6 +35,8 @@ Zweiter Versuch: `--tools agents` legt nur `.agents/skills/` an (6 Skills, keine
 
 Auflösung der offenen Frage: Claude Code liest Projekt-Skills aus `.claude/skills/`. Beim ersten echten Aufruf kam `Unknown skill: openspec-propose`, `.agents/skills/` wird also nicht erkannt. Die `SKILL.md` ist aber nur Text: Ich habe sie gelesen und den Ablauf von Hand mit der OpenSpec-CLI nachvollzogen (`openspec new change`, `status`, `instructions`, `validate`). Das ging ohne Skill, nur mit weniger Komfort. Fazit für den Prozess: Skills sind bequem, die CLI mit ihrem JSON ist die eigentliche Schnittstelle.
 
+Lösung für das Repo: Die agentenneutrale Basis `.agents/` bleibt eingecheckt, den Adapter für den eigenen Agenten erzeugt jede Person lokal (`openspec init --tools claude`) und trägt den Ordner in `.git/info/exclude` ein. So bleibt das Repo frei von agentenspezifischen Dateien, und ein anderer Agent kommt ohne Repo-Änderung dazu. Einen Klon-Hook gibt es in Git nicht (Hooks werden nicht mitgeklont), deshalb soll ein Setup-Skript der feste erste Schritt nach dem Klonen werden (Issue #14).
+
 ## Workflow definieren
 
 Entscheidung: OpenSpec hält fest, *was* gelten soll, GitHub-Issues, `tdd` und `code-review` erledigen das Bauen. Beschrieben in `docs/workflow.md`: Teil A generisch mit Voraussetzungen (später Basis für ein Setup-Skript), Teil B repo-spezifisch, Teil C persönliche Haken (z. B. Verlauf ins eigene Wissenssystem). Verdrahtet über `rules` und `operations.*.guidance` in `openspec/config.yaml`.
