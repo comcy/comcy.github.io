@@ -83,7 +83,8 @@ blockquote { margin: 0; padding-left: 1rem; border-left: 3px solid var(--accent)
   background: var(--card); box-shadow: var(--shadow); }
 .gallery img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 10px; }
 .gallery figcaption { color: var(--muted); font-size: .85rem; margin-top: .4rem; }
-footer.site { margin-top: 3rem; padding-top: 1rem; padding-bottom: 2rem; color: var(--muted); font-size: .9rem; }
+footer.site { margin-top: 3rem; padding-bottom: 2rem; color: var(--muted); font-size: .9rem; }
+footer.site p { margin: 0; padding-top: 1rem; border-top: 1px solid var(--line); }
 .copy-btn { position: absolute; top: .4rem; right: .4rem; font: inherit; font-size: .75rem; cursor: pointer;
   padding: .15rem .5rem; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--muted); }
 div.sourceCode { position: relative; }
