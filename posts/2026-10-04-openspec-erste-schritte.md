@@ -29,11 +29,15 @@ draft: true
 
 ## `openspec init`
 
-`openspec init --tools claude --language de` legt an: `openspec/` (`config.yaml`, `specs/`, `changes/archive/`) und `.claude/` mit 6 Skills und 6 Commands (`/opsx:propose`, `apply`, `archive`, `explore`, `update`, `sync`). `AGENTS.md` bleibt unberührt. Standardprofil ohne `verify`, `ff`, `new`.
+Erster Versuch: `openspec init --tools claude --language de`. Das legte `openspec/` an und dazu `.claude/` mit 6 Skills **und** 6 Commands (`/opsx:propose` usw.), also dieselben sechs Abläufe doppelt. Ich wollte keinen `.claude/`-Ordner im Repo, sondern agnostisch bleiben.
+
+Zweiter Versuch: `--tools agents` legt nur `.agents/skills/` an (6 Skills, keine Commands). Die Namen ändern sich dabei: `/opsx:propose` wird `/openspec-propose`, `/opsx:archive` wird `/openspec-archive-change`. `AGENTS.md` bleibt in beiden Fällen unberührt. Standardprofil ohne `verify`, `ff`, `new`.
+
+Offene Frage: Claude Code liest Projekt-Skills aus `.claude/skills/`. Ob `.agents/skills/` ohne lokalen Symlink erkannt wird, ist noch zu prüfen.
 
 ## Workflow definieren
 
-Entscheidung: OpenSpec hält fest, *was* gelten soll, GitHub-Issues, `tdd` und `code-review` erledigen das Bauen. Beschrieben in `docs/workflow.md`, Teil A generisch (später Basis für ein Setup-Skript), Teil B repo-spezifisch. Verdrahtet über `rules` und `operations.*.guidance` in `openspec/config.yaml`.
+Entscheidung: OpenSpec hält fest, *was* gelten soll, GitHub-Issues, `tdd` und `code-review` erledigen das Bauen. Beschrieben in `docs/workflow.md`: Teil A generisch mit Voraussetzungen (später Basis für ein Setup-Skript), Teil B repo-spezifisch, Teil C persönliche Haken (z. B. Verlauf ins eigene Wissenssystem). Verdrahtet über `rules` und `operations.*.guidance` in `openspec/config.yaml`.
 
 ## Das Modell
 
