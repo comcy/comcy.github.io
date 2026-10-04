@@ -76,7 +76,13 @@ blockquote { margin: 0; padding-left: 1rem; border-left: 3px solid var(--accent)
 .posts li { padding: 1rem 1.25rem; border: 1px solid var(--line); border-radius: 16px; background: var(--card);
   box-shadow: var(--shadow); transition: transform .15s ease, border-color .15s ease; }
 .posts li:hover { transform: translateY(-2px); border-color: var(--accent); }
+.posts li { position: relative; }
 .posts li > a { font-weight: 700; font-size: 1.1rem; text-decoration: none; }
+/* Die ganze Karte ist klickbar: das ::after des Titel-Links deckt die Karte ab (kein verschachtelter Link nötig) */
+.posts li > a::after { content: ""; position: absolute; inset: 0; border-radius: 16px; }
+.posts li > a:focus-visible { outline: none; }
+.posts li > a:focus-visible::after { outline: 2px solid var(--accent); outline-offset: 2px; }
+.posts li:hover > a { color: var(--accent2); }
 .posts .date { color: var(--muted); font-size: .85rem; margin-right: .4rem; }
 .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 1rem; }
 .gallery figure { margin: 0; padding: .6rem; border: 1px solid var(--line); border-radius: 16px;
