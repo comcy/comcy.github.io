@@ -49,6 +49,18 @@ Entscheidung: OpenSpec hält fest, *was* gelten soll, GitHub-Issues, `tdd` und `
 - Abgrenzung: OpenSpec ist die Spec, `/to-spec` entfällt. `/to-tickets` schneidet den Change in Tickets, `/implement` baut (tdd + code-review), `/triage` ist der Eingang.
 - Das Phasenmodell ist bewusst ein Gerüst. Erweiterungspunkte (UI/UX-Prototypen, früher Tester, Rückfragen an einen PO, mehrere Personen) stehen in der Doku, aber noch nicht ausgebaut.
 
+## Schlank bleiben: Status ohne Board
+
+Gedanke für den Post: Ein agiler Prozess hängt nicht am Werkzeug. Zustände (`ready-for-refinement`, `in-refinement`, `in-progress`, `in-review`) lassen sich als Labels (GitHub) oder Tags (Azure DevOps) abbilden, ein Board kommt erst dazu, wenn mehrere Personen mitarbeiten. Ein Feature-Issue kann Sub-Issues haben, an denen verschiedene Personen arbeiten (`/to-tickets` nutzt native Sub-Issue- und Blocking-Beziehungen). Zwei Ebenen: Refinement-Zustände am Feature, Bau-Zustände an den Tickets. Zu klären: Wie viel davon tragen die Skills selbst, wie viel steht nur als Anweisung in der Doku?
+
+## Prozess statt Skills, und wie verlässlich ist er?
+
+Beobachtung: Der Ablauf steht in Prosa (`AGENTS.md`, `workflow.md`, Skill-Texte). Ein Agent folgt ihm wahrscheinlich, aber nicht garantiert. Wichtiger als "die Skills benutzt zu haben" ist der Prozess: Jede Phase bekommt Eingang, Ergebnis, Prüfpunkt und Zustandswechsel, das Werkzeug dahinter ist austauschbar.
+
+Leiter von weich nach hart: Prosa, Skill, Skill-Konfiguration, Skript, Hook, CI mit Branch-Schutz. Das Modell urteilt, Skripte und CI erzwingen Übergänge. Nachvollziehbar wird es über Label-Zeitstempel, Session-Links in Commits, protokollierende Hooks und einen Testlauf an einer Beispielaufgabe. Details in `docs/workflow.md`, Abschnitt "Später: Verlässlichkeit und Nachvollziehbarkeit". Noch nicht umgesetzt.
+
+Reihenfolge, die ich verfolge: erst agentenunabhängige Mittel (Git-Hooks, CI, Branch-Schutz), dann ein Skript für Zustandswechsel, dann Phasen als Daten, zuletzt Orchestrierung. Agenten-Hooks sind an den Agenten gebunden, harte Regeln gehören deshalb in Git-Hooks und CI. LangGraph (Ablauf als Graph, Modell nur im Knoten) wäre die härteste Stufe, lohnt aber erst bei unbeaufsichtigtem Betrieb. Leichter davor: GitHub Actions auf Label-Ereignissen.
+
 ## Noch zu dokumentieren
 
 - Erster Change von der Idee bis zum Archive.
