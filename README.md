@@ -30,6 +30,15 @@ SITE_URL=http://localhost:8000 DRAFTS=1 ./build.sh
 python3 -m http.server -d public 8000
 ```
 
+## Prüfen
+
+```sh
+sh tests/timeline-check.sh
+```
+
+Baut die Seite in temporären Klonen mit eigenen Beiträgen und prüft die Timeline auf der Startseite
+(Anzahl, Reihenfolge, Datumsformate, Entwürfe, leere Seite). Kein Framework, nur `sh`, `pandoc`, `grep`.
+
 ## Aufbau
 
 | Pfad | Inhalt |
@@ -37,6 +46,7 @@ python3 -m http.server -d public 8000
 | `build.sh` | Build-Skript (POSIX sh) |
 | `site.conf` | Titel, Autor, URL |
 | `templates/page.html` | HTML-Template für pandoc |
+| `tests/` | Shell-Checks, z. B. `timeline-check.sh` |
 | `static/` | CSS und andere Dateien, werden 1:1 kopiert |
 | `pages/` | Startseite, Über mich, Galerie-Text und weitere Seiten |
 | `.github/workflows/deploy.yml` | Baut und veröffentlicht bei jedem Push auf `master` |
