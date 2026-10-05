@@ -21,6 +21,7 @@ Was jede Person installiert haben muss, bevor der Ablauf funktioniert:
 | `pnpm` (oder `npm`) | installiert OpenSpec | Paketmanager; `pnpm` einmalig `pnpm setup` | `pnpm --version` |
 | OpenSpec CLI | Specs und Changes | `pnpm add -g @fission-ai/openspec@latest` (oder `npm i -g`) | `openspec --version` (hier 1.14.0) |
 | KI-Agent mit Skill-Unterstützung | führt die Skills aus (hier Claude Code) | siehe Agent-Doku | |
+| kvasir (empfohlen, nicht zwingend) | Sicht auf Abhängigkeiten, Status, Zeitplan und Prozessstand (geplant, #28), Worktrees | Installation siehe kvasir-Repo (`install.sh`) | `kvasir doctor` |
 | Matt-Pocock-Skills | `grilling`, `triage`, `to-tickets`, `implement`, `tdd`, `code-review` u. a. | Plugin über den Marketplace: `/plugin install mattpocock-skills@claude-plugins-official` (hier 1.2.3) | `/plugin` |
 
 Projektspezifische Werkzeuge (z. B. Build-Tools) stehen in Teil B.
@@ -39,10 +40,13 @@ Leitidee: **OpenSpec hält fest, *was* gelten soll (Anforderungen als Specs). Is
 | 2. Anforderungen festhalten | `/openspec-propose <name>` | `openspec/changes/<name>/`: proposal, Delta-Specs, design, tasks |
 | 3. Arbeit schneiden | `/to-tickets` aus dem Change | Tracer-Bullet-Tickets mit Blockern auf GitHub |
 | 4. Bauen und prüfen | `/implement` je Ticket (treibt `tdd`, endet mit `code-review`) | Code + Tests, ein PR je Ticket, `tasks.md` abhaken |
+| 4b. Abnahme (optional) | PR als Draft, Belege am PR (Prüfbefehl, bei UI Screenshots), Branch lokal auschecken und ansehen, danach Freigabe | Person hat das Ergebnis selbst gesehen, PR freigegeben |
 | 5. Abschließen | `/openspec-archive-change` | Delta-Specs fließen in `openspec/specs/` |
 | 6. Wissen sichern | Entscheidungen als ADR in `docs/adr/` (`/domain-modeling`), Verlauf in einem Log, Ort frei wählbar | Entscheidungen, Stolpersteine nachlesbar |
 
 Status am Issue (zweite Label-Dimension, `status:ready-for-refinement`, `status:in-refinement`, `status:in-progress`, `status:in-review`): `docs/agents/flow-labels.md`. Die Skills setzen sie nicht, sie gelten als Anweisung.
+
+Abnahme-Gate (Phase 4b, optional): Der PR bleibt Draft, bis eine Person den Branch lokal ausgecheckt, gebaut und angesehen hat (`git switch <branch>`, Prüfbefehl, Seite starten). Der Draft-PR enthält dafür die Befehle und eine Prüfliste; bei sichtbaren Änderungen hängen Screenshots daran (Branch `pr-screenshots`, Bilder per Raw-URL im PR-Text). Das Gate entfällt bei reiner Doku und bei Änderungen ohne sichtbares Ergebnis. Es ergänzt automatische Prüfungen (Shell-Check, später CI), ersetzt sie nicht.
 
 Rollen der Skills: **OpenSpec ist die Spec** (Verhalten, dauerhaft in `openspec/specs/`). `/to-spec` wird deshalb **nicht** benutzt, es würde eine zweite Spec als Issue anlegen. `/to-tickets` ist das Bindeglied: Es schneidet den Change in Arbeit, die Issues referenzieren den Change-Namen.
 
@@ -112,6 +116,22 @@ Das Phasenmodell ist ein Gerüst, keine Vollständigkeit. Wo Lücken später gef
 - **Rückfragen an einen PO:** Schleife Phase 1 <-> 2. Frage als Kommentar am Issue, Label `needs-info` (Triage wartet auf den Fragesteller), Antwort fließt per `/openspec-update-change` in den Change. Der Change bleibt offen, bis die Fragen geklärt sind.
 - **Mehrere Personen:** Eingang über Issues + `/triage` (Rollen und Labels stehen bereits in `docs/agents/`). Später feiner: Zuständigkeit je Phase, Review-Pflicht, Branch-Schutz, Change-Eigentümer, PR-Vorlage, Labels für UX/Test.
 - **Bugs:** eigener Pfad ohne Change (`diagnosing-bugs` + `tdd`), siehe Regeln.
+
+## Sichtbarkeit und Prozessstand (entschieden, nicht gebaut, Issue #28)
+
+Wunsch: auf einen Blick sehen, (1) welche Work Items voneinander abhängen, (2) was offen, in Arbeit oder erledigt ist, (3) einen Zeitplan, wenn Items Termine haben, und (4) wo man im Prozess steht. Die Daten sind vorhanden (Sub-Issues, `blocked_by`, Labels, PRs, Meilensteine, per `gh api` abfragbar). Entscheidungen aus dem Grilling:
+
+- **Motor ist kvasir** (Python, deterministisch, ohne Modell): CLI mit JSON-Ausgabe (`kvasir status`, `kvasir graph --format text|mermaid|html|json`), TUI-Panel und dünne Skills als Verbraucher. kvasir ist **empfohlen, aber nicht zwingend**: Der Prozess läuft ohne, nur ohne diese Sicht. kvasir bleibt **rein lesend**, die Ausgabe geht nach stdout oder in eine Datei.
+- **Große Ansicht:** Spur je Feature (Eltern-Issue), waagerecht die Abhängigkeitstiefe oder, wo Termine gesetzt sind, die Zeit; der Status zeigt sich als Knotenfarbe. Spuren nach Person oder Phase später per Option.
+- **Prozess-Stepper** als eigene Kontextansicht je Item: Feature-Phasen (S bis 6) plus beobachtbare Ticket-Schritte (Branch, PR Draft, Checks grün, lokale Abnahme, Review, PR bereit, gemergt). Jeder Schritt ist erledigt, aktuell oder offen. Nicht Beobachtbares (z. B. TDD-Phase) erscheint nicht.
+- **Umfang:** pro Repo, Standard alles Offene plus 14 Tage Erledigtes, Spur "Ohne Feature", Beziehungen in andere Repos als graue externe Knoten, Warnung ab etwa 40 Knoten statt stillem Abschneiden.
+- **Status aus Fakten:** geschlossen = erledigt (mit Grund "nicht geplant" oder `wontfix` = verworfen), offene Blocker = blockiert, PR bereit = in Review, Draft-PR oder Branch mit Issue-Nummer = in Arbeit, sonst offen. Das `status:*`-Label ist nur Hinweis oder gilt, wo keine Tatsache existiert; Widersprüche werden angezeigt, nichts wird still korrigiert.
+- **Termine:** Meilenstein für Fristen (`due_on`), feste Zeile `Geplant: 2026-10-12 – 2026-10-14` im Issue für Zeiträume, Projects-Felder später. Benannte Zeiträume: Zeile `Frist: Ende Q4 2026` für Kalenderableitbares, **Sprints als Meilenstein** (Name, Fälligkeit). Bei Konflikt zählt das frühere Datum, beide werden gezeigt. Ohne Termine gibt es nur Reihenfolge nach Abhängigkeit, keine erfundene Zeit.
+- **Phasen und Konfiguration als Daten:** `kvasir.toml` im Repo-Wurzelverzeichnis, Abschnitte u. a. `[workflow]` (Phasen mit `done_when`), `[branches]`, `[dates]`. Detektoren (`issue_exists`, `label:<n>`, `openspec_change_exists`, `openspec_artifacts_complete`, `subissues_exist`, `pr_state:<…>`, `issue_closed`, `file_exists:<pfad>`) sind Code in kvasir aus einem festen Vokabular, die Datei enthält keinen ausführbaren Code. Vorrang: lokal (`~/.config/kvasir/`) vor Repo vor eingebautem Standard. `kvasir init` legt die Datei interaktiv an (feste Vorlagen, zeigt den Diff, überschreibt nie still), `kvasir doctor` prüft sie. Aus derselben Phasenliste sollen später Tabelle, Diagramm und Setup entstehen.
+- **Setup:** `scripts/setup` (Issue #14) bleibt der unabhängige Einstieg inklusive Labels und ruft `kvasir init` auf, wenn kvasir vorhanden ist; sonst ein Hinweis. kvasir legt nie Labels an.
+- **Scheiben für die Umsetzung (in kvasir):** (1) Kern und Stepper (`kvasir status`, `--format json`), (2) Mermaid, (3) TUI-Panel, (4) HTML/SVG-Canvas mit Spuren und Zeitachse, (5) Azure DevOps.
+
+Übersicht der Alternativen, die verworfen wurden: GitHub Projects (Board und Roadmap, aber kein Abhängigkeitsgraph, Token-Rechte, keine Skill-Unterstützung), ein eigenes POSIX-Skript neben kvasir (doppelte Leseschicht).
 
 ## Später: Verlässlichkeit und Nachvollziehbarkeit
 
