@@ -75,6 +75,10 @@ Reihenfolge, die ich verfolge: erst agentenunabhängige Mittel (Git-Hooks, CI, B
 
 Beim ersten Umsetzungs-PR (Timeline, Ticket #16) kam ein optionaler Schritt dazu: Der PR bleibt Draft, bis ich den Branch lokal ausgecheckt und angesehen habe. Der PR-Text enthält die Befehle (`git switch`, Shell-Check, Seite bauen und starten) und eine Prüfliste, bei sichtbaren Änderungen Screenshots in allen Farbvarianten und auf dem Handy. Ablauf: TDD für alles, was der Build ausgibt (sieben Fälle, jeweils erst rot, dann grün, ein Mutationscheck bestätigt, dass der Test wirklich etwas prüft), Screenshots für alles Optische, danach der Mensch. Das Gate ergänzt die automatischen Prüfungen, ersetzt sie nicht, und entfällt bei reiner Doku.
 
+## Was mir fehlt: der Überblick
+
+Mit Sub-Issues, `blocked_by` und Status-Labels habe ich alle Daten, aber keine Sicht darauf: Wer hängt von wem ab, was läuft gerade, wo stehe ich im Prozess, gibt es einen Zeitplan? GitHub Projects zeigt Spalten und eine Roadmap, aber keinen Abhängigkeitsgraphen. Mein Plan: ein kleines Skript liest Items, Beziehungen, Status und Termine in ein neutrales Modell und erzeugt daraus einen Mermaid-Graphen mit Statusfarben (GitHub rendert Mermaid), ein Gantt bei vorhandenen Terminen und einen Prozess-Stepper je Feature. Der Stand soll aus Tatsachen kommen (Change vollständig, Tickets da, PR Draft oder bereit), nicht nur aus Labels. Später soll dasselbe Modell mein Projekt kvasir speisen, auch für Azure DevOps. Noch nicht gebaut (Issue #28).
+
 ## Noch zu dokumentieren
 
 - Erster Change von der Idee bis zum Archive.

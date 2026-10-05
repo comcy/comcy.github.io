@@ -116,6 +116,25 @@ Das Phasenmodell ist ein Gerüst, keine Vollständigkeit. Wo Lücken später gef
 - **Mehrere Personen:** Eingang über Issues + `/triage` (Rollen und Labels stehen bereits in `docs/agents/`). Später feiner: Zuständigkeit je Phase, Review-Pflicht, Branch-Schutz, Change-Eigentümer, PR-Vorlage, Labels für UX/Test.
 - **Bugs:** eigener Pfad ohne Change (`diagnosing-bugs` + `tdd`), siehe Regeln.
 
+## Sichtbarkeit und Prozessstand (Überlegung, nicht gebaut, Issue #28)
+
+Wunsch: auf einen Blick sehen, (1) welche Work Items voneinander abhängen, (2) was noch nicht begonnen, in Arbeit oder erledigt ist, (3) einen Zeitplan, wenn Items Termine haben, und (4) wo man als Person im Prozess steht und welche Schritte schon gelaufen sind oder fehlen. Erst minimal und visuell.
+
+Datenquelle ist vorhanden: Sub-Issues, `blocked_by`, `status:*`-Labels, offene und geschlossene Issues, PRs (Draft oder bereit), Meilensteine. Die Abfrage per `gh api` hat bei den Tickets #16 bis #20 funktioniert.
+
+| Option | Zeigt | Grenzen |
+| --- | --- | --- |
+| **GitHub Projects (Board, Tabelle, Roadmap)** | Status als Spalten, Roadmap nach Datumsfeldern, Sub-Issue-Hierarchie | Abhängigkeiten nur als Feld, kein Graph; Einrichtung und Token-Rechte (`gh project`), keine Skill-Unterstützung |
+| **Mermaid aus Daten erzeugt** (Skript) | `flowchart` für Abhängigkeiten, Knotenfarbe nach Status; `gantt` für Termine; GitHub rendert Mermaid in Markdown, Issues und PRs | braucht ein Skript und einen Ort (Datei oder Kommentar am Eltern-Issue); Gantt nur bei Terminen |
+| **Terminal-Ansicht** (Skript, später kvasir) | Stepper je Feature, Liste mit Status und Blockern | nur lokal; kvasir bietet dafür ein Panel, Stand dort nicht geprüft |
+| **Azure DevOps nativ** | Boards, Delivery Plans, Beziehungen mit Start- und Zieldatum | nur dort; als Datenquelle für das neutrale Modell unten |
+
+**Prozessstand (Stepper):** Der Stand je Feature soll aus Tatsachen abgeleitet werden, nicht nur aus Labels. Beispiele: Change vorhanden und `openspec status` vollständig = Phase 2 erledigt; Sub-Issues vorhanden = Phase 3; PR Draft = Phase 4 läuft, PR bereit = Review; Issue geschlossen = erledigt. Ausgabe als Zeilen mit Symbolen (erledigt, aktuell, offen). Der Diagramm-Generator ist bereits datengetrieben und kann Phasen je Feature einfärben ("Sie sind hier").
+
+**Termine:** Ein Meilenstein mit `due_on` ist der kleinste Weg (GitHub-nativ, Azure DevOps hat Entsprechungen). Für Start und Ende je Item wären Projects-Felder oder eine Zeile im Issue nötig. Ohne Termine entsteht keine Timeline, nur Reihenfolge nach Abhängigkeit.
+
+**Empfehlung für den Anfang:** ein Skript, das Items, Beziehungen, Status und Termine in ein neutrales Modell liest und daraus (1) einen Mermaid-Graphen mit Statusfarben, (2) bei Terminen ein `gantt` und (3) den Prozess-Stepper erzeugt. Tracker-spezifisch ist nur das Einlesen (GitHub, später Azure DevOps), die Ausgabe ist dieselbe. Das neutrale Modell ist zugleich die Schnittstelle für kvasir.
+
 ## Später: Verlässlichkeit und Nachvollziehbarkeit
 
 Aktuell steht der Prozess in Prosa (`AGENTS.md`, diese Datei, Skill-Texte, `openspec/config.yaml`). Ein Agent befolgt das wahrscheinlich, aber nicht garantiert. Idee für später, nicht jetzt: Texte erklären, Werkzeuge erzwingen.
