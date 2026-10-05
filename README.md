@@ -23,6 +23,23 @@ Bilder zu einem Post kommen in einen gleichnamigen Ordner (`posts/JJJJ-MM-TT-slu
 und werden im Text als `![Beschreibung](bild.jpg)` eingebunden.
 Galeriebilder kommen nach `gallery/`, eine Bildunterschrift optional in `gallery/<bild>.txt`.
 
+## Timeline
+
+Die Startseite zeigt eine Timeline mit den 8 neuesten Einträgen: alle Beiträge und Seiten mit `date:` im
+Frontmatter (nicht Startseite und Galerie, Entwürfe nur mit `DRAFTS=1`) sowie manuelle Bookmarks aus `timeline/`.
+Ein Bookmark ist eine Datei `timeline/JJJJ-MM-slug.md` ohne eigene Seite, die Beschreibung klappt auf:
+
+```markdown
+---
+title: Entwicklungsprozess mit OpenSpec aufgesetzt
+date: 2026-10-04      # JJJJ, JJJJ-MM oder JJJJ-MM-TT (fehlender Teil zählt als der erste)
+end: now              # optional: Datum im selben Format oder now = laufend
+description: Ein Satz, der beim Aufklappen erscheint.
+---
+```
+
+Fehlendes oder ungültiges Datum, fehlender Titel und ein Ende vor dem Start brechen den Build mit dem Dateinamen ab.
+
 ## Lokal ansehen
 
 ```sh

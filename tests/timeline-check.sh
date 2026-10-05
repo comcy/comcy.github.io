@@ -12,7 +12,7 @@ no() { echo "FEHLER $1"; FAIL=1; }
 
 # fresh <name>: leerer Klon ohne Beiträge, setzt W
 fresh() {
-  W=$WORK/$1; mkdir -p "$W/posts"
+  W=$WORK/$1; mkdir -p "$W/posts" "$W/timeline"
   for d in build.sh site.conf templates static pages; do cp -R "$ROOT/$d" "$W/"; done
 }
 # post <dateiname-ohne-.md> <titel> [draft]
@@ -23,6 +23,15 @@ post() {
 }
 # postd <dateiname-ohne-.md> <titel> <datum-wie-geschrieben>
 postd() { printf -- '---\ntitle: %s\ndate: "%s"\n---\n\nText.\n' "$2" "$3" > "$W/posts/$1.md"; }
+# bm <dateiname-ohne-.md> <titel> <datum> [end] [beschreibung]: Bookmark in timeline/
+bm() {
+  # einfache Anführungszeichen: Backslashes bleiben wörtlich
+  { printf -- "---\ntitle: '%s'\ndate: '%s'\n" "$2" "$3"
+    [ -n "${4:-}" ] && printf "end: '%s'\n" "$4"
+    [ -n "${5:-}" ] && printf "description: '%s'\n" "$5"
+    [ "${6:-}" = draft ] && printf 'draft: true\n'
+    printf -- '---\n'; } > "$W/timeline/$1.md"
+}
 # build: baut in $W, Ausgabe in $W/out.log und $W/err.log, gibt den Exit-Code zurück
 build() { (cd "$W" && SITE_URL=http://localhost DRAFTS="${DRAFTS:-0}" sh build.sh >out.log 2>err.log); }
 # timeline_html: nur der Timeline-Abschnitt der Startseite
@@ -80,5 +89,59 @@ fresh sonder
 post 2026-06-01-sonder "Tom & Jerry \\<3"
 build
 if timeline_html | grep -q 'Tom &amp; Jerry &lt;3'; then ok "Sonderzeichen im Titel escaped"; else no "Sonderzeichen im Titel escaped"; fi
+
+# 8. Ein Bookmark aus timeline/ erscheint in der Timeline, ohne eigene Seite
+fresh bookmark
+post 2026-07-01-eins "Ein Beitrag"; bm 2024-05-vortrag "Vortrag zu Scrum" 2024-05 "" "Ein Satz zum Vortrag."
+build
+if timeline_html | grep -q 'Vortrag zu Scrum' && [ "$(timeline_html | grep -c 'class="tl-item"')" = 2 ] && [ -z "$(find "$W/public" -path '*vortrag*' 2>/dev/null)" ]; then ok "Bookmark erscheint ohne eigene Seite"; else no "Bookmark erscheint ohne eigene Seite"; fi
+
+# 9. Ein Bookmark ist aufklappbar: Titel in <summary>, Beschreibung im aufgeklappten Teil
+h=$(timeline_html | tr '\n' ' ')
+if printf '%s' "$h" | grep -q '<details><summary>[^<]*<time[^>]*>2024-05</time> Vortrag zu Scrum</summary><p>Ein Satz zum Vortrag.</p>'; then ok "Bookmark als details mit Beschreibung"; else no "Bookmark als details mit Beschreibung"; fi
+
+# 10. Reihenfolge nach normalisiertem Datum: fehlender Monat/Tag zählt als der erste
+fresh mix
+post 2026-10-03-beitrag "Beitrag 3. Oktober"; bm a-okt "Bookmark Oktober" 2026-10; bm b-jahr "Bookmark Jahr" 2026; post 2026-01-01-neujahr "Beitrag Neujahr"
+build
+got=$(timeline_html | grep -o '\(Beitrag 3. Oktober\|Bookmark Oktober\|Beitrag Neujahr\|Bookmark Jahr\)' | tr '\n' '|')
+if [ "$got" = "Beitrag 3. Oktober|Bookmark Oktober|Beitrag Neujahr|Bookmark Jahr|" ]; then ok "Reihenfolge nach normalisiertem Datum"; else no "Reihenfolge nach normalisiertem Datum (war: $got)"; fi
+
+# 11. Zeitraum: end wird als Zeitraum gezeigt, now als laufend, die Position bleibt durch date bestimmt
+fresh zeitraum
+post 2026-01-01-neu "Neuer Beitrag"; bm a-fest "Mit Ende" 2024-05 2024-11 "Text."; bm b-lauf "Laufend" 2023 now "Text."; bm c-spaet "Ende nach Beitrag" 2025-01 2027-12 "Text."
+build; h=$(timeline_html | tr '\n' ' ')
+if printf '%s' "$h" | grep -q '2024-05 – 2024-11' && printf '%s' "$h" | grep -q '2023 – laufend'; then ok "Zeitraum und laufend werden angezeigt"; else no "Zeitraum und laufend werden angezeigt"; fi
+got=$(timeline_html | grep -o '\(Neuer Beitrag\|Mit Ende\|Laufend\|Ende nach Beitrag\)' | tr '\n' '|')
+if [ "$got" = "Neuer Beitrag|Ende nach Beitrag|Mit Ende|Laufend|" ]; then ok "Position bleibt durch date bestimmt"; else no "Position bleibt durch date bestimmt (war: $got)"; fi
+
+# 12. Fehlerhafte Bookmarks brechen den Build ab und nennen die Datei
+fehler() { # <name> <frontmatter-zeilen>
+  fresh fehler-$1; printf -- '---\n%b\n---\n' "$2" > "$W/timeline/kaputt.md"
+  if build; then no "Bookmark $1 bricht den Build ab"
+  elif grep -q "timeline/kaputt.md" "$W/err.log"; then ok "Bookmark $1 bricht ab und nennt die Datei"
+  else no "Bookmark $1 bricht ab, nennt aber die Datei nicht"; fi
+}
+fehler ohne-datum 'title: "Titel"'
+fehler ohne-titel 'date: "2024-05"'
+fehler ungueltiges-datum 'title: "Titel"\ndate: "2024-13"'
+fehler ungueltiges-ende 'title: "Titel"\ndate: "2024-05"\nend: "bald"'
+fehler ende-vor-start 'title: "Titel"\ndate: "2024-05-10"\nend: "2024-05-01"'
+
+# 13. Seiten mit date: erscheinen, ohne Datum nicht; Startseite und Galerie zählen nie
+fresh seiten
+printf -- '---\ntitle: Neue Seite\ndate: 2026-08-01\n---\n\nText.\n' > "$W/pages/neu.md"
+printf -- '---\ntitle: Startseite\ndate: 2026-09-01\n---\n\nText.\n' > "$W/pages/index.md"
+printf -- '---\ntitle: Galerie\ndate: 2026-09-02\n---\n\nText.\n' > "$W/pages/gallery.md"
+build; h=$(timeline_html | tr '\n' ' ')
+if printf '%s' "$h" | grep -q '<a href="/neu/">Neue Seite</a>' && ! printf '%s' "$h" | grep -q 'Über mich\|Startseite\|Galerie'; then ok "Seite mit Datum erscheint, ohne Datum nicht, index und gallery nie"; else no "Seite mit Datum erscheint, ohne Datum nicht, index und gallery nie (war: $h)"; fi
+
+# 14. Bookmark-Entwürfe nur mit DRAFTS=1, Sonderzeichen in Titel und Beschreibung werden escaped
+fresh bm-extra
+bm skizze "Skizze" 2025-01 "" "Noch nicht fertig." draft
+bm tom "Tom & Jerry \\<3" 2025-02 "" "Eins & zwei \\<drei"
+DRAFTS=0 build; a=$(timeline_html | grep -c 'class="tl-item"'); DRAFTS=1 build; b=$(timeline_html | grep -c 'class="tl-item"')
+if [ "$a" = 1 ] && [ "$b" = 2 ]; then ok "Bookmark-Entwurf nur mit DRAFTS=1"; else no "Bookmark-Entwurf nur mit DRAFTS=1 (ohne: $a, mit: $b)"; fi
+if timeline_html | grep -q 'Tom &amp; Jerry &lt;3' && timeline_html | grep -q 'Eins &amp; zwei &lt;drei'; then ok "Sonderzeichen im Bookmark escaped"; else no "Sonderzeichen im Bookmark escaped"; fi
 
 exit $FAIL
