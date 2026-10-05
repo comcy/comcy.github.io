@@ -77,7 +77,15 @@ Beim ersten Umsetzungs-PR (Timeline, Ticket #16) kam ein optionaler Schritt dazu
 
 ## Was mir fehlt: der Überblick
 
-Mit Sub-Issues, `blocked_by` und Status-Labels habe ich alle Daten, aber keine Sicht darauf: Wer hängt von wem ab, was läuft gerade, wo stehe ich im Prozess, gibt es einen Zeitplan? GitHub Projects zeigt Spalten und eine Roadmap, aber keinen Abhängigkeitsgraphen. Mein Plan: ein kleines Skript liest Items, Beziehungen, Status und Termine in ein neutrales Modell und erzeugt daraus einen Mermaid-Graphen mit Statusfarben (GitHub rendert Mermaid), ein Gantt bei vorhandenen Terminen und einen Prozess-Stepper je Feature. Der Stand soll aus Tatsachen kommen (Change vollständig, Tickets da, PR Draft oder bereit), nicht nur aus Labels. Später soll dasselbe Modell mein Projekt kvasir speisen, auch für Azure DevOps. Noch nicht gebaut (Issue #28).
+Mit Sub-Issues, `blocked_by` und Status-Labels habe ich alle Daten, aber keine Sicht darauf: Wer hängt von wem ab, was läuft gerade, wo stehe ich im Prozess, gibt es einen Zeitplan? Die Entscheidungen nach einer Grilling-Runde (elf Fragen):
+
+- Die Sicht kommt aus **kvasir**, meinem Terminal-Tool: deterministischer Python-Code ohne Modell, CLI mit JSON-Ausgabe, TUI-Panel und dünne Skills als Verbraucher. Empfohlen, nicht zwingend, und **rein lesend**.
+- Eine große Ansicht mit Spuren je Feature, Kanten für Abhängigkeiten, Statusfarbe und Zeitachse, dazu ein **Stepper** als Kontext (erledigt, aktuell, offen).
+- Der Status kommt aus **Fakten** (Issue geschlossen, offene Blocker, PR Draft oder bereit), das Label ist nur ein Hinweis. Widersprüche werden angezeigt, nicht still korrigiert.
+- Termine: Meilenstein für Fristen und Sprints, eine feste Zeile im Issue für Zeiträume und Quartalsende. Ohne Termine keine erfundene Zeit.
+- Phasen und weitere Einstellungen stehen als Daten in einer `kvasir.toml` im Repo, `kvasir init` legt sie an, `kvasir doctor` prüft sie.
+
+Warum nicht GitHub Projects? Es zeigt Spalten und eine Roadmap, aber keinen Abhängigkeitsgraphen, und braucht Token-Rechte. Noch nicht gebaut (Issue #28, Umsetzung in kvasir).
 
 ## Noch zu dokumentieren
 

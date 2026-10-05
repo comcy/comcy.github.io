@@ -21,6 +21,7 @@ Was jede Person installiert haben muss, bevor der Ablauf funktioniert:
 | `pnpm` (oder `npm`) | installiert OpenSpec | Paketmanager; `pnpm` einmalig `pnpm setup` | `pnpm --version` |
 | OpenSpec CLI | Specs und Changes | `pnpm add -g @fission-ai/openspec@latest` (oder `npm i -g`) | `openspec --version` (hier 1.14.0) |
 | KI-Agent mit Skill-Unterstützung | führt die Skills aus (hier Claude Code) | siehe Agent-Doku | |
+| kvasir (empfohlen, nicht zwingend) | Sicht auf Abhängigkeiten, Status, Zeitplan und Prozessstand (geplant, #28), Worktrees | Installation siehe kvasir-Repo (`install.sh`) | `kvasir doctor` |
 | Matt-Pocock-Skills | `grilling`, `triage`, `to-tickets`, `implement`, `tdd`, `code-review` u. a. | Plugin über den Marketplace: `/plugin install mattpocock-skills@claude-plugins-official` (hier 1.2.3) | `/plugin` |
 
 Projektspezifische Werkzeuge (z. B. Build-Tools) stehen in Teil B.
@@ -116,24 +117,21 @@ Das Phasenmodell ist ein Gerüst, keine Vollständigkeit. Wo Lücken später gef
 - **Mehrere Personen:** Eingang über Issues + `/triage` (Rollen und Labels stehen bereits in `docs/agents/`). Später feiner: Zuständigkeit je Phase, Review-Pflicht, Branch-Schutz, Change-Eigentümer, PR-Vorlage, Labels für UX/Test.
 - **Bugs:** eigener Pfad ohne Change (`diagnosing-bugs` + `tdd`), siehe Regeln.
 
-## Sichtbarkeit und Prozessstand (Überlegung, nicht gebaut, Issue #28)
+## Sichtbarkeit und Prozessstand (entschieden, nicht gebaut, Issue #28)
 
-Wunsch: auf einen Blick sehen, (1) welche Work Items voneinander abhängen, (2) was noch nicht begonnen, in Arbeit oder erledigt ist, (3) einen Zeitplan, wenn Items Termine haben, und (4) wo man als Person im Prozess steht und welche Schritte schon gelaufen sind oder fehlen. Erst minimal und visuell.
+Wunsch: auf einen Blick sehen, (1) welche Work Items voneinander abhängen, (2) was offen, in Arbeit oder erledigt ist, (3) einen Zeitplan, wenn Items Termine haben, und (4) wo man im Prozess steht. Die Daten sind vorhanden (Sub-Issues, `blocked_by`, Labels, PRs, Meilensteine, per `gh api` abfragbar). Entscheidungen aus dem Grilling:
 
-Datenquelle ist vorhanden: Sub-Issues, `blocked_by`, `status:*`-Labels, offene und geschlossene Issues, PRs (Draft oder bereit), Meilensteine. Die Abfrage per `gh api` hat bei den Tickets #16 bis #20 funktioniert.
+- **Motor ist kvasir** (Python, deterministisch, ohne Modell): CLI mit JSON-Ausgabe (`kvasir status`, `kvasir graph --format text|mermaid|html|json`), TUI-Panel und dünne Skills als Verbraucher. kvasir ist **empfohlen, aber nicht zwingend**: Der Prozess läuft ohne, nur ohne diese Sicht. kvasir bleibt **rein lesend**, die Ausgabe geht nach stdout oder in eine Datei.
+- **Große Ansicht:** Spur je Feature (Eltern-Issue), waagerecht die Abhängigkeitstiefe oder, wo Termine gesetzt sind, die Zeit; der Status zeigt sich als Knotenfarbe. Spuren nach Person oder Phase später per Option.
+- **Prozess-Stepper** als eigene Kontextansicht je Item: Feature-Phasen (S bis 6) plus beobachtbare Ticket-Schritte (Branch, PR Draft, Checks grün, lokale Abnahme, Review, PR bereit, gemergt). Jeder Schritt ist erledigt, aktuell oder offen. Nicht Beobachtbares (z. B. TDD-Phase) erscheint nicht.
+- **Umfang:** pro Repo, Standard alles Offene plus 14 Tage Erledigtes, Spur "Ohne Feature", Beziehungen in andere Repos als graue externe Knoten, Warnung ab etwa 40 Knoten statt stillem Abschneiden.
+- **Status aus Fakten:** geschlossen = erledigt (mit Grund "nicht geplant" oder `wontfix` = verworfen), offene Blocker = blockiert, PR bereit = in Review, Draft-PR oder Branch mit Issue-Nummer = in Arbeit, sonst offen. Das `status:*`-Label ist nur Hinweis oder gilt, wo keine Tatsache existiert; Widersprüche werden angezeigt, nichts wird still korrigiert.
+- **Termine:** Meilenstein für Fristen (`due_on`), feste Zeile `Geplant: 2026-10-12 – 2026-10-14` im Issue für Zeiträume, Projects-Felder später. Benannte Zeiträume: Zeile `Frist: Ende Q4 2026` für Kalenderableitbares, **Sprints als Meilenstein** (Name, Fälligkeit). Bei Konflikt zählt das frühere Datum, beide werden gezeigt. Ohne Termine gibt es nur Reihenfolge nach Abhängigkeit, keine erfundene Zeit.
+- **Phasen und Konfiguration als Daten:** `kvasir.toml` im Repo-Wurzelverzeichnis, Abschnitte u. a. `[workflow]` (Phasen mit `done_when`), `[branches]`, `[dates]`. Detektoren (`issue_exists`, `label:<n>`, `openspec_change_exists`, `openspec_artifacts_complete`, `subissues_exist`, `pr_state:<…>`, `issue_closed`, `file_exists:<pfad>`) sind Code in kvasir aus einem festen Vokabular, die Datei enthält keinen ausführbaren Code. Vorrang: lokal (`~/.config/kvasir/`) vor Repo vor eingebautem Standard. `kvasir init` legt die Datei interaktiv an (feste Vorlagen, zeigt den Diff, überschreibt nie still), `kvasir doctor` prüft sie. Aus derselben Phasenliste sollen später Tabelle, Diagramm und Setup entstehen.
+- **Setup:** `scripts/setup` (Issue #14) bleibt der unabhängige Einstieg inklusive Labels und ruft `kvasir init` auf, wenn kvasir vorhanden ist; sonst ein Hinweis. kvasir legt nie Labels an.
+- **Scheiben für die Umsetzung (in kvasir):** (1) Kern und Stepper (`kvasir status`, `--format json`), (2) Mermaid, (3) TUI-Panel, (4) HTML/SVG-Canvas mit Spuren und Zeitachse, (5) Azure DevOps.
 
-| Option | Zeigt | Grenzen |
-| --- | --- | --- |
-| **GitHub Projects (Board, Tabelle, Roadmap)** | Status als Spalten, Roadmap nach Datumsfeldern, Sub-Issue-Hierarchie | Abhängigkeiten nur als Feld, kein Graph; Einrichtung und Token-Rechte (`gh project`), keine Skill-Unterstützung |
-| **Mermaid aus Daten erzeugt** (Skript) | `flowchart` für Abhängigkeiten, Knotenfarbe nach Status; `gantt` für Termine; GitHub rendert Mermaid in Markdown, Issues und PRs | braucht ein Skript und einen Ort (Datei oder Kommentar am Eltern-Issue); Gantt nur bei Terminen |
-| **Terminal-Ansicht** (Skript, später kvasir) | Stepper je Feature, Liste mit Status und Blockern | nur lokal; kvasir bietet dafür ein Panel, Stand dort nicht geprüft |
-| **Azure DevOps nativ** | Boards, Delivery Plans, Beziehungen mit Start- und Zieldatum | nur dort; als Datenquelle für das neutrale Modell unten |
-
-**Prozessstand (Stepper):** Der Stand je Feature soll aus Tatsachen abgeleitet werden, nicht nur aus Labels. Beispiele: Change vorhanden und `openspec status` vollständig = Phase 2 erledigt; Sub-Issues vorhanden = Phase 3; PR Draft = Phase 4 läuft, PR bereit = Review; Issue geschlossen = erledigt. Ausgabe als Zeilen mit Symbolen (erledigt, aktuell, offen). Der Diagramm-Generator ist bereits datengetrieben und kann Phasen je Feature einfärben ("Sie sind hier").
-
-**Termine:** Ein Meilenstein mit `due_on` ist der kleinste Weg (GitHub-nativ, Azure DevOps hat Entsprechungen). Für Start und Ende je Item wären Projects-Felder oder eine Zeile im Issue nötig. Ohne Termine entsteht keine Timeline, nur Reihenfolge nach Abhängigkeit.
-
-**Empfehlung für den Anfang:** ein Skript, das Items, Beziehungen, Status und Termine in ein neutrales Modell liest und daraus (1) einen Mermaid-Graphen mit Statusfarben, (2) bei Terminen ein `gantt` und (3) den Prozess-Stepper erzeugt. Tracker-spezifisch ist nur das Einlesen (GitHub, später Azure DevOps), die Ausgabe ist dieselbe. Das neutrale Modell ist zugleich die Schnittstelle für kvasir.
+Übersicht der Alternativen, die verworfen wurden: GitHub Projects (Board und Roadmap, aber kein Abhängigkeitsgraph, Token-Rechte, keine Skill-Unterstützung), ein eigenes POSIX-Skript neben kvasir (doppelte Leseschicht).
 
 ## Später: Verlässlichkeit und Nachvollziehbarkeit
 
