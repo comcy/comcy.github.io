@@ -33,6 +33,19 @@ md_escape() { printf '%s' "$1" | sed 's/[][\\*_`<>]/\\&/g'; }
 # Zeichen escapen, die in XML stören
 xml_escape() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
 
+# Prüft ein Datum (YYYY, YYYY-MM oder YYYY-MM-DD), sonst Abbruch mit Dateiname: check_date <datum> <datei>
+# ponytail: Monatslängen werden nicht geprüft (2026-02-30 gilt), bei Bedarf mit date(1) ergänzen
+check_date() {
+  printf '%s' "$1" | grep -Eq '^[0-9]{4}(-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?)?$' ||
+    { echo "Ungültiges Datum '$1' in $2" >&2; exit 1; }
+}
+
+# Timeline-Eintrag für einen Post (liest Felder aus $date $slug $title)
+timeline_item() {
+  printf '<li class="tl-item"><time datetime="%s">%s</time> <a href="%s/blog/%s/">%s</a></li>\n' \
+    "$date" "$date" "$BASE" "$slug" "$(xml_escape "$title")"
+}
+
 # Listeneintrag für einen Post (liest Felder aus $date $slug $title $desc)
 post_item() {
   printf -- '- [%s](%s/blog/%s/)  \n  [%s]{.date} %s\n' \
@@ -47,6 +60,7 @@ for f in posts/*.md; do
   slug=$(basename "$f" .md)
   slug=${slug#[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-}
   meta=$(pandoc "$f" --to plain --wrap=none --template templates/meta.txt)
+  check_date "$(printf '%s' "$meta" | cut -f1)" "$f"
   draft=$(printf '%s' "$meta" | cut -f3)
   if [ "$draft" = draft ] && [ "${DRAFTS:-0}" != 1 ]; then
     echo "Entwurf übersprungen: $f"
@@ -59,7 +73,7 @@ for f in posts/*.md; do
   [ -d "${f%.md}" ] && cp -R "${f%.md}/." "$OUT/blog/$slug/"
   echo "Post: $slug"
 done
-sort -r "$TMP/index" > "$TMP/sorted"
+LC_ALL=C sort -r "$TMP/index" > "$TMP/sorted"
 
 # --- Blog-Übersicht und Startseite ----------------------------------------------
 {
@@ -74,8 +88,14 @@ render "$TMP/blog.md" "$OUT/blog/index.html" -M pagetitle=Blog
   printf '\n## Neueste Beiträge\n\n::: posts\n'
   head -n 5 "$TMP/sorted" | while IFS=$US read -r date slug title tags desc; do post_item; done
   printf ':::\n\n[Alle Beiträge →](%s/blog/)\n' "$BASE"
+  # Timeline als rohes HTML, die Spalte liegt per CSS neben dem Inhalt (ohne Einträge entfällt sie)
+  if [ -s "$TMP/sorted" ]; then
+    printf '\n```{=html}\n<aside class="timeline" aria-label="Timeline">\n<h2>Timeline</h2>\n<div class="timeline-scroll">\n<ol class="timeline-list">\n'
+    head -n 8 "$TMP/sorted" | while IFS=$US read -r date slug title tags desc; do timeline_item; done
+    printf '</ol>\n</div>\n</aside>\n```\n'
+  fi
 } > "$TMP/home.md"
-render "$TMP/home.md" "$OUT/index.html" -M pagetitle=Start --metadata description="$SITE_DESCRIPTION"
+render "$TMP/home.md" "$OUT/index.html" -M home=true -M pagetitle=Start --metadata description="$SITE_DESCRIPTION"
 
 # --- Themen (Tags) ------------------------------------------------------------
 cut -d "$US" -f4 "$TMP/sorted" | tr ' ' '\n' | sed '/^$/d' | sort -u > "$TMP/tags"

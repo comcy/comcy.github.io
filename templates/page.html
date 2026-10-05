@@ -12,7 +12,7 @@ $endif$<script>document.documentElement.classList.add("js");try{var t=localStora
 <link rel="stylesheet" href="$base$/style.css?v=$v$">
 <link rel="alternate" type="application/atom+xml" title="$site$" href="$base$/feed.xml">
 </head>
-<body>
+<body$if(home)$ class="home"$endif$>
 <header class="site">
   <a class="brand" href="$base$/">$site$</a>
   <nav id="site-nav">
@@ -28,7 +28,7 @@ $endif$<script>document.documentElement.classList.add("js");try{var t=localStora
     <button id="menu-toggle" class="icon-btn" type="button" aria-label="Menü" aria-expanded="false" aria-controls="site-nav">☰</button>
   </div>
 </header>
-<main>
+<main$if(home)$ class="home"$endif$>
 $if(post)$<article>
 <h1>$title$</h1>
 <p class="meta"><time datetime="$date$">$date$</time>$for(tags)$ <a class="tag" href="$base$/tags/$tags$/">#$tags$</a>$endfor$</p>
