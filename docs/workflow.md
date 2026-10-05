@@ -103,6 +103,14 @@ Haken an den generischen Phasen. Nur persönlich, nicht Teil des generischen Abl
 | 4 (Commit) | Commits als Conventional Commits mit festem Autor, Secret-Scan vor dem Staging (globale Regeln) |
 | 6 | Verlauf und Referenz zusätzlich ins persönliche Wissenssystem (Vault, `Projects/<name>/`: Plan, Log) schreiben |
 
+## Teststrategie
+
+- **Szenario heißt Testfall:** Jedes Szenario einer OpenSpec-Spec ist ein Testfall. Die Shell-Tests unter `tests/<spec>-check.sh` sind die ausführbare Form des Verhaltens und bleiben im Repo.
+- **Teststelle ist der Build-Aufruf:** `sh build.sh` in einem temporären Klon mit eigenen Fixtures, geprüft wird `public/` und der Fehlercode (Black-Box, keine internen Funktionen). Vor dem ersten Test werden die Teststellen bestätigt (`/tdd`).
+- **Layout per Screenshot:** Optik ist im Build-Output nicht sinnvoll prüfbar. Screenshots dienen als Beleg am PR (Branch `pr-screenshots`) und sind nicht persistent.
+- **Wo es läuft:** lokal mit `sh tests/run.sh`, in der CI auf jedem Pull Request und vor dem Veröffentlichen. Ein verbindlicher Branch-Schutz ("Status check erforderlich") ist eine GitHub-Einstellung und bewusst noch nicht gesetzt.
+- **Mutationscheck:** Bei einem Test, der etwas Unsichtbares schützen soll (z. B. feste Reihenfolge), den Code kurz verschlechtern und prüfen, dass der Test rot wird.
+
 ## Erweiterungspunkte (bewusst noch nicht ausgebaut)
 
 Das Phasenmodell ist ein Gerüst, keine Vollständigkeit. Wo Lücken später gefüllt werden:

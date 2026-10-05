@@ -33,8 +33,11 @@ python3 -m http.server -d public 8000
 ## Prüfen
 
 ```sh
-sh tests/timeline-check.sh
+sh tests/run.sh
 ```
+
+`tests/run.sh` führt alle `tests/*-check.sh` aus (Fehlercode bei einem roten Fall). In der CI läuft er auf jedem
+Pull Request (`.github/workflows/test.yml`) und vor dem Veröffentlichen (`deploy.yml`).
 
 Baut die Seite in temporären Klonen mit eigenen Beiträgen und prüft die Timeline auf der Startseite
 (Anzahl, Reihenfolge, Datumsformate, Entwürfe, leere Seite). Kein Framework, nur `sh`, `pandoc`, `grep`.
