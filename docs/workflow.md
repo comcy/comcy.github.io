@@ -39,10 +39,13 @@ Leitidee: **OpenSpec hält fest, *was* gelten soll (Anforderungen als Specs). Is
 | 2. Anforderungen festhalten | `/openspec-propose <name>` | `openspec/changes/<name>/`: proposal, Delta-Specs, design, tasks |
 | 3. Arbeit schneiden | `/to-tickets` aus dem Change | Tracer-Bullet-Tickets mit Blockern auf GitHub |
 | 4. Bauen und prüfen | `/implement` je Ticket (treibt `tdd`, endet mit `code-review`) | Code + Tests, ein PR je Ticket, `tasks.md` abhaken |
+| 4b. Abnahme (optional) | PR als Draft, Belege am PR (Prüfbefehl, bei UI Screenshots), Branch lokal auschecken und ansehen, danach Freigabe | Person hat das Ergebnis selbst gesehen, PR freigegeben |
 | 5. Abschließen | `/openspec-archive-change` | Delta-Specs fließen in `openspec/specs/` |
 | 6. Wissen sichern | Entscheidungen als ADR in `docs/adr/` (`/domain-modeling`), Verlauf in einem Log, Ort frei wählbar | Entscheidungen, Stolpersteine nachlesbar |
 
 Status am Issue (zweite Label-Dimension, `status:ready-for-refinement`, `status:in-refinement`, `status:in-progress`, `status:in-review`): `docs/agents/flow-labels.md`. Die Skills setzen sie nicht, sie gelten als Anweisung.
+
+Abnahme-Gate (Phase 4b, optional): Der PR bleibt Draft, bis eine Person den Branch lokal ausgecheckt, gebaut und angesehen hat (`git switch <branch>`, Prüfbefehl, Seite starten). Der Draft-PR enthält dafür die Befehle und eine Prüfliste; bei sichtbaren Änderungen hängen Screenshots daran (Branch `pr-screenshots`, Bilder per Raw-URL im PR-Text). Das Gate entfällt bei reiner Doku und bei Änderungen ohne sichtbares Ergebnis. Es ergänzt automatische Prüfungen (Shell-Check, später CI), ersetzt sie nicht.
 
 Rollen der Skills: **OpenSpec ist die Spec** (Verhalten, dauerhaft in `openspec/specs/`). `/to-spec` wird deshalb **nicht** benutzt, es würde eine zweite Spec als Issue anlegen. `/to-tickets` ist das Bindeglied: Es schneidet den Change in Arbeit, die Issues referenzieren den Change-Namen.
 

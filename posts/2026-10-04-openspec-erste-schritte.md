@@ -71,6 +71,10 @@ Reihenfolge, die ich verfolge: erst agentenunabhängige Mittel (Git-Hooks, CI, B
 - `/to-tickets` ließ sich von Hand nach `SKILL.md` ausführen: Die Tasks (nach Schichten geordnet) wurden zu 5 vertikalen Scheiben umgeschnitten, ich habe sie vorgestellt, du hast sie bestätigt, erst dann habe ich veröffentlicht. Ergebnis: 5 Sub-Issues von #13 (#16 bis #20) mit `ready-for-agent` und nativen `blocked_by`-Beziehungen (Sub-Issue- und Dependency-API von GitHub per `gh api`, funktionierte beim ersten Versuch bis auf eine verlorene Beziehung, die ich nachträglich setzen musste: dort lohnt später eine Prüfung im Skript).
 - Beobachtung: `tasks.md` aus OpenSpec ist nach Schichten geordnet (Daten, Ausgabe, Layout), `/to-tickets` verlangt vertikale Scheiben. Beides zusammen braucht eine Übersetzung, die Tasks sind Eingabe, nicht Ergebnis. Eventuell die Task-Regel in `openspec/config.yaml` anpassen ("vertikale Scheiben statt Schichten").
 
+## Ein Gate vor der Freigabe: lokale Abnahme
+
+Beim ersten Umsetzungs-PR (Timeline, Ticket #16) kam ein optionaler Schritt dazu: Der PR bleibt Draft, bis ich den Branch lokal ausgecheckt und angesehen habe. Der PR-Text enthält die Befehle (`git switch`, Shell-Check, Seite bauen und starten) und eine Prüfliste, bei sichtbaren Änderungen Screenshots in allen Farbvarianten und auf dem Handy. Ablauf: TDD für alles, was der Build ausgibt (sieben Fälle, jeweils erst rot, dann grün, ein Mutationscheck bestätigt, dass der Test wirklich etwas prüft), Screenshots für alles Optische, danach der Mensch. Das Gate ergänzt die automatischen Prüfungen, ersetzt sie nicht, und entfällt bei reiner Doku.
+
 ## Noch zu dokumentieren
 
 - Erster Change von der Idee bis zum Archive.
