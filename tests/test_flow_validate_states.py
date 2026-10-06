@@ -28,14 +28,30 @@ def run_validate(root, *extra):
     )
 
 
+# Die übrigen drei Dateien müssen existieren (jede Datei ist Pflicht) und zu den Zuständen in GOOD passen,
+# damit die Tests hier nur die Zustände prüfen.
+SUPPORT = {
+    "detectors.tsv": "name\targ\tdescription\nissue_open\t-\tIssue ist offen\n",
+    "phases.tsv": "id\tname\ttool\tdone_when\tlevel\n0\tEingang\t/triage\tissue_open\trequired\n",
+    "transitions.tsv": "from\tto\ttrigger\tguard\n"
+                       "-\tneeds-triage\tstart\t-\n"
+                       "needs-triage\tready-for-agent\tready\tissue_open\n"
+                       "ready-for-agent\tclosed\tfertig\t-\n"
+                       "-\tstatus:in-progress\tfluss\t-\n"
+                       "status:in-progress\tclosed\tende\t-\n",
+}
+
+
 class WithStates(unittest.TestCase):
-    """Legt je Test einen temporären Ordner mit workflow/states.tsv an."""
+    """Legt je Test einen temporären Ordner mit workflow/states.tsv und den Begleitdateien an."""
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.root = Path(self._tmp.name)
         (self.root / "workflow").mkdir()
+        for name, text in SUPPORT.items():
+            (self.root / "workflow" / name).write_bytes(text.encode("utf-8"))
 
     def write_states(self, lines, newline="\n", header=HEADER):
         text = newline.join([header, *lines]) + newline
@@ -143,7 +159,9 @@ class Zustaende(WithStates):
         self.assertEqual(r.returncode, 1)
         self.assertIn("workflow/states.tsv:2:", r.stdout)
         self.assertIn("workflow/states.tsv:3:", r.stdout)
-        self.assertIn("2 Fehler", r.stdout)
+        zustandsfunde = [l for l in r.stdout.splitlines() if l.startswith("workflow/states.tsv:")]
+        self.assertEqual(len(zustandsfunde), 2, r.stdout)
+        self.assertRegex(r.stdout, r"\d+ Fehler, \d+ Warnungen")
 
     def test_ausgabeformat_datei_zeile_meldung(self):
         r = self.write_states([GOOD[0], GOOD[0], *GOOD[1:]])
