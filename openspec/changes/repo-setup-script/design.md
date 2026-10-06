@@ -42,6 +42,12 @@ Lokal: `git config --local` lesen und schreiben, `.git/info/exclude` zeilenweise
 **7. CI.**
 Neuer Job mit Matrix `ubuntu-latest`, `macos-latest`, `windows-latest`, der nur die Python-Tests und `flow validate` ausführt (ohne pandoc). Der Check heißt weiterhin `test` für die Shell-Tests auf Ubuntu; der neue Job bekommt einen eigenen Namen und wird erst nach der ersten grünen Reihe in den Branch-Schutz aufgenommen. `.gitattributes` setzt `eol=lf` für `workflow/*.tsv`, `scripts/**` und `tests/**`, damit Windows keine CRLF in die Daten schreibt (der Leser akzeptiert beides).
 
+**8. Schritte statt Verzweigungen (Umsetzung).**
+`scripts/lib/local.py` plant die Schritte (`Step` mit Beschriftung und Ausführung), `plan` liefert nur die fehlenden. Der normale Lauf führt sie aus, `--check` meldet dieselbe Liste als `FEHLT`. Dadurch gibt es keine zweite Prüflogik. Programme laufen mit dem Repo als Arbeitsordner (`cwd=<Repo>`), weil `openspec init` im Arbeitsordner arbeitet. `openspec init` läuft mit `--no-animation`.
+
+**9. Fehler und Hinweise (Umsetzung).**
+Fehlendes Pflichtprogramm und unbekannter Agent sind Fehler und verhindern jede Änderung. Dinge, die ohne GitHub nicht prüfbar sind (keine Anmeldung, kein GitHub-Remote), sind ohne `--labels` nur ein Hinweis, mit `--labels` ein Fehler. Diese Regel kam aus einem manuellen Probelauf in einem Klon ohne GitHub-Remote.
+
 ## Risks / Trade-offs
 
 - [Stubs bilden `gh` und `openspec` nur nach, wie sie dokumentiert sind] → Manueller Probelauf im PR mit den echten Programmen, Ausgabe als Beleg; Abweichungen werden zu neuen Testfällen.
@@ -57,4 +63,5 @@ Neue Dateien, keine Umleitung bestehender URLs. Die bestehende Checkliste in `do
 
 ## Open Questions
 
-- Soll `setup` später auch `kvasir init` aufrufen? Das gehört in das kvasir-Ticket zu `kvasir.toml` (#53), nicht hierher; die Prüfung dort wird nur als Hinweis gemeldet, wenn kvasir fehlt.
+- Soll `setup` später auch `kvasir init` aufrufen? Das gehört in das kvasir-Ticket zu `kvasir.toml` (#53), nicht hierher. `setup` meldet nur einen Hinweis, wenn kvasir fehlt.
+- Echte Prüfung von `gh label create` gegen ein Repo mit fehlenden Labels steht aus (nur Stubs und ein Probelauf ohne fehlende Labels).

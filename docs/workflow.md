@@ -17,13 +17,14 @@ Was jede Person installiert haben muss, bevor der Ablauf funktioniert:
 | --- | --- | --- | --- |
 | `git` und ein GitHub-Repo | Versionsverwaltung, Remote | Paketmanager | `git --version` |
 | GitHub CLI `gh`, eingeloggt | Issues, PRs, `/triage`, `/to-tickets` | <https://cli.github.com>, dann `gh auth login` | `gh auth status` |
+| Python ab 3.11 | Setup und Prüfung des Prozesses (`scripts/`, nur Standardbibliothek) | <https://www.python.org> oder Paketmanager | `python3 --version` (Windows: `py -3 --version`) |
 | Node.js ab 20.19 | Laufzeit für OpenSpec | <https://nodejs.org> oder Paketmanager | `node --version` |
 | `pnpm` (oder `npm`) | installiert OpenSpec | Paketmanager; `pnpm` einmalig `pnpm setup` | `pnpm --version` |
 | OpenSpec CLI | Specs und Changes | `pnpm add -g @fission-ai/openspec@latest` (oder `npm i -g`) | `openspec --version` (hier 1.14.0) |
 | KI-Agent mit Skill-Unterstützung | führt die Skills aus (hier Claude Code) | siehe Agent-Doku | |
 | Matt-Pocock-Skills | `grilling`, `triage`, `to-tickets`, `implement`, `tdd`, `code-review` u. a. | Plugin über den Marketplace: `/plugin install mattpocock-skills@claude-plugins-official` (hier 1.2.3) | `/plugin` |
 
-Projektspezifische Werkzeuge (z. B. Build-Tools) stehen in Teil B.
+Die Tabelle spiegelt `scripts/setup.d/tools.tsv`, `python3 scripts/setup.py --check` prüft sie (Mindestversionen, Pflicht oder empfohlen). Projektspezifische Werkzeuge (z. B. Build-Tools) stehen in Teil B.
 
 ### Ablauf
 
@@ -33,7 +34,7 @@ Leitidee: **OpenSpec hält fest, *was* gelten soll (Anforderungen als Specs). Is
 
 | Phase | Werkzeug | Ergebnis |
 | --- | --- | --- |
-| S. Setup (einmalig je Klon) | `sh scripts/setup` (geplant, Issue #14), bis dahin die Setup-Checkliste unten von Hand | Voraussetzungen erfüllt, `openspec/` und `.agents/` vorhanden, Agenten-Adapter lokal, Labels angelegt |
+| S. Setup (einmalig je Klon) | `python3 scripts/setup.py [agent]` (`--check`, `--labels`), danach `python3 scripts/flow.py validate` | Voraussetzungen erfüllt, Adapter lokal eingerichtet, Labels angelegt, Prozessdaten konsistent |
 | 0. Eingang | Issue anlegen, `/triage` | Triage-Zustand (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`) |
 | 1. Idee schärfen | `/grilling` oder `/openspec-explore` | Entscheidungen, Rest-Fragen |
 | 2. Anforderungen festhalten | `/openspec-propose <name>` | `openspec/changes/<name>/`: proposal, Delta-Specs, design, tasks |
@@ -58,25 +59,38 @@ Regeln:
 
 Jede Person darf Phasen um eigene Schritte ergänzen (Haken), ohne den generischen Ablauf zu ändern. Regel: Der Haken benennt die Phase, nach der er läuft, und beschreibt den Schritt. Beispiele für Haken: Verlauf in ein persönliches Wissenssystem schreiben (nach Phase 6), eigene Branch-Regeln (Phase 4), Benachrichtigungen. Die konkreten Haken stehen in Teil C.
 
-### Setup-Checkliste (Basis für ein späteres Skript)
-
-1. Voraussetzungen (Tabelle oben) erfüllen.
-2. Git-Repo mit GitHub-Remote.
-3. `/setup-matt-pocock-skills`: `AGENTS.md` (oder `CLAUDE.md`), `docs/agents/{issue-tracker,triage-labels,domain}.md`.
-4. `openspec init --tools agents --language <de|en>` einmal fürs Repo -> `openspec/` und `.agents/skills/` (6 OpenSpec-Skills, keine Commands). `.agents/` wird eingecheckt (agentenneutrale Basis).
-5. **Pro Person, lokal:** `openspec init --tools <dein Agent>` (z. B. `claude`, mehrere kommagetrennt). Die erzeugten Ordner (`.claude/` usw.) werden **nicht** eingecheckt, sondern in `.git/info/exclude` eingetragen, damit das Repo agentenneutral bleibt. Nach einem CLI-Update `openspec update`, danach neue Agent-Session.
-6. `openspec/config.yaml`: `rules.tasks` und `operations.apply|archive.guidance` auf den Workflow zeigen lassen (Beispiel: Teil B).
-7. Dieses Dokument ins Projekt legen.
-8. Optional: eigene Haken einrichten (siehe "Eigene Anpassungen", Beispiel: Teil C).
-
-Warum lokal: Claude Code sucht Projekt-Skills nur in `.claude/skills/`, nicht in `.agents/skills/` (bestätigt: `/openspec-propose` blieb unbekannt). Die agentenspezifischen Dateien sind abgeleitet (`openspec update` erzeugt sie neu), jede Person braucht nur den Adapter für ihren Agenten. Ein Klon-Hook ist in Git nicht möglich, Hooks werden nicht mitgeklont. Deshalb gehört das Setup in ein Skript, das nach dem Klonen als fester erster Schritt läuft (geplant: `scripts/setup`, siehe Issue #14).
-
-Für Claude Code, einmalig nach dem Klonen:
+### Setup nach dem Klonen
 
 ```
-openspec init --tools claude --language de
-echo '.claude/' >> .git/info/exclude
+python3 scripts/setup.py --check            # prüft, ändert nichts (Exit-Code 1, wenn etwas fehlt)
+python3 scripts/setup.py claude             # richtet den lokalen Klon für Claude Code ein
+python3 scripts/setup.py --labels claude    # dasselbe, legt zusätzlich fehlende Labels an (einmal je Repo)
+python3 scripts/flow.py validate            # prüft die Prozessdaten unter workflow/
 ```
+Unter Windows `py -3 scripts\setup.py …`. Das Setup tut Folgendes (Details in der Spec `repo-setup`):
+
+1. **Voraussetzungen** aus `scripts/setup.d/tools.tsv` prüfen; ein fehlendes Pflichtprogramm bricht ab, ohne etwas zu ändern.
+2. **Adapter:** `openspec init --tools agents[,<agent>]` (nur wenn ein Adapterordner fehlt), die gewählten Agenten stehen in `git config --local setup.agents` und werden beim nächsten Aufruf ohne Argument wieder genutzt. Bei abweichender `openspec`-Version (`generatedBy` in den Skills) ruft ein Lauf `openspec update` auf. Agenten und ihre Ordner stehen in `scripts/setup.d/agents.tsv`.
+3. **Ausschlüsse:** Die Ordner der Agenten (`.claude/` usw.) kommen einmalig in `.git/info/exclude`, nicht in die `.gitignore`. `.agents/` bleibt eingecheckt (agentenneutrale Basis).
+4. **Hooks:** `core.hooksPath` auf `.githooks`, sobald dieser Ordner existiert.
+5. **Labels** nur mit `--labels`: fehlende Labels der Zustände aus `workflow/states.tsv`, vorhandene bleiben unberührt. Ohne den Schalter nennt `setup` nur die Zahl der fehlenden Labels.
+
+Ein zweiter Lauf meldet "nichts zu tun". Von Hand bleibt: `/setup-matt-pocock-skills` (`AGENTS.md`, `docs/agents/*.md`), in `openspec/config.yaml` die Regeln `rules.tasks` und `operations.*.guidance` (Beispiel: Teil B), dieses Dokument ins Projekt legen und optional eigene Haken (siehe "Eigene Anpassungen").
+
+Warum lokal: Claude Code sucht Projekt-Skills nur in `.claude/skills/`, nicht in `.agents/skills/`. Die agentenspezifischen Dateien sind abgeleitet (`openspec update` erzeugt sie neu), jede Person braucht nur den Adapter für ihren Agenten. Ein Klon-Hook ist in Git nicht möglich (Hooks werden nicht mitgeklont), deshalb ist `scripts/setup.py` der feste erste Schritt.
+
+### Prozessdaten (`workflow/`)
+
+Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Dateien neben dem Werkzeug, tabulatorgetrennt mit Kopfzeile (Spalten nach Namen, `#` für Kommentare, `enabled` zum Abschalten eines Schritts). Sie sind die Quelle der Labels und später für kvasir und das Diagramm.
+
+| Datei | Inhalt |
+| --- | --- |
+| `states.tsv` | Zustände: `id` (= Label), `kind` (`triage`, `status`, `terminal`), `color`, `description` |
+| `transitions.tsv` | Übergänge: `from` (oder `-` für den Start), `to`, `trigger`, `guard` (Detektoren, Komma = UND) |
+| `phases.tsv` | Phasen S, 0 bis 6, 4b: `id`, `name`, `tool`, `done_when`, `level` |
+| `detectors.tsv` | das feste Vokabular der Bedingungen mit Argumentform (`-`, `text`, `path`, `enum:a|b|c`) |
+
+`python3 scripts/flow.py validate` prüft Spalten, Eindeutigkeit, Verweise, Dimensionen (Übergänge nur innerhalb einer Dimension, außer vom Start oder zu `closed`) und das Vokabular; Warnungen (abgeschaltete Verweise, Sackgassen, Phasenreihenfolge) werden mit `--strict` zu Fehlern. Es läuft in jedem Pull Request. Die Dateien enthalten nie Code, ausgewertet wird im Werkzeug. Ein Wechsel auf JSON oder YAML wäre lokal im Leser (`scripts/lib/workflow.py`) möglich, sobald ODER-Bedingungen, mehr als etwa acht Eigenschaften je Schritt oder Tab-Fehler es nötig machen.
 
 ## Teil B: Dieses Repo
 
@@ -143,8 +157,8 @@ Idee: Phasen als Daten beschreiben (Eingang, Ergebnis, Prüfpunkt, Zustandswechs
 ### Umsetzungsreihenfolge (später, jeweils nur bei echtem Bedarf)
 
 1. **Agentenunabhängig und billig:** Git-Hooks über `git config core.hooksPath .githooks` (`commit-msg`: Conventional Commits, `pre-commit`: Secret-Scan), dazu ein CI-Job (Build, Validierung) und Branch-Schutz auf `master`. Wirkt für jede Person und jeden Agenten.
-2. **Skripte:** `scripts/setup` (Issue #14, einmaliger Einstieg nach dem Klonen: Voraussetzungen, `openspec init`, Adapter, Labels) und danach ein Skript für Zustandswechsel: z. B. `scripts/flow start <issue>` legt `feature/<id>-<slug>` an und setzt `status:in-progress`, `scripts/flow review` setzt `status:in-review`. POSIX-Shell mit `gh`, wie der Rest des Repos.
-3. **Phasen als Daten:** eine Datei (z. B. `workflow.yaml`), aus der Doku, Diagramm, Labels und Setup erzeugt werden.
+2. **Skripte:** `scripts/setup.py` (erledigt mit #14, einmaliger Einstieg nach dem Klonen) und danach ein Skript für Zustandswechsel (noch offen, `scripts/flow.py` kennt bisher nur `validate`): z. B. `scripts/flow start <issue>` legt `feature/<id>-<slug>` an und setzt `status:in-progress`, `scripts/flow review` setzt `status:in-review`. POSIX-Shell mit `gh`, wie der Rest des Repos.
+3. **Phasen als Daten:** erledigt als `workflow/*.tsv` (#14), die Labels entstehen daraus, Doku und Diagramm sollen noch daraus erzeugt werden.
 4. **Nachvollziehbarkeit:** Protokoll der Skill-Aufrufe und `gh`-Schreibzugriffe, Testlauf des Prozesses an einer Beispielaufgabe.
 5. **Orchestrierung (nur bei unbeaufsichtigtem Betrieb):** siehe unten.
 
@@ -166,4 +180,5 @@ Erfahrungen aus dem ersten durchlaufenen Change (`timeline-startseite`, 2026-10-
 - **Overhead eines Changes:** Proposal, Specs, Design und Tasks waren schnell geschrieben (ein Zug), den Aufwand machten Umsetzung, Tests und Abnahme. Vermutung, noch nicht gemessen: Für Änderungen mit weniger als etwa einem Ticket Aufwand lohnt der Change nicht, dann reichen Issue, `/tdd` und PR.
 - **Abnahme-Gate:** Die lokale Abnahme vor der Freigabe hat sich bewährt. Merges vor dem CI-Ergebnis verhindert jetzt der Branch-Schutz (Check `test`).
 - **Skripte statt Prosa für Browser-Prüfungen:** Headless Chromium über das DevTools-Protokoll aus Node reicht für Nachladen, Tastatur, Kontrast und 375 px, ohne neue Abhängigkeit. Die Prüfungen laufen manuell, nicht in der CI.
+- **Selbstständiger Lauf (#14, Tickets #47 bis #52, 2026-10-06):** Sechs Tickets nacheinander mit TDD, Pull Request, CI auf drei Systemen und Merge bei Grün, ohne Zwischenabnahme. Funktioniert, wenn die Teststellen von außen liegen (Prozessaufruf, Stub-Programme) und die Matrix auf Ubuntu, macOS und Windows sofort mitläuft: die Stubs mit `.cmd`-Wrapper liefen beim ersten Versuch. Was dabei schiefging: ein früher Testlauf ließ einen Stub mit dem Arbeitsordner des Tests Dateien im echten Repo überschreiben (Gegenmaßnahme: `openspec` läuft mit `cwd=<Repo>`, Stubs schreiben nur unter `STUB_ROOT`), `__pycache__` wurde einmal eingecheckt (`.gitignore`), und ein Probelauf in einem Klon ohne GitHub-Remote zeigte, dass `gh label list` dort scheitert (jetzt nur ein Hinweis, mit `--labels` ein Fehler). Der manuelle Probelauf mit den echten Programmen im Wegwerf-Klon hat damit Fehler gefunden, die die Stubs nicht zeigen konnten.
 - **Testlaufzeit:** 48 Fälle brauchen lokal etwa 75 Sekunden und wachsen mit jedem Fall. Fixtures verkleinern oder Builds teilen, bevor es zu langsam wird.

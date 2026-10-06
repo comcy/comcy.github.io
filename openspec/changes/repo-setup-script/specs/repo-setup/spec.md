@@ -21,6 +21,10 @@ Legt fest, was der Befehl `setup` nach dem Klonen tut: Voraussetzungen prüfen, 
 - **WHEN** nur ein Programm der Stufe `recommended` fehlt
 - **THEN** zeigt `setup` einen Hinweis und der Exit-Code bleibt 0
 
+#### Scenario: Normaler Lauf bricht vor jeder Änderung ab
+- **WHEN** ein Pflichtprogramm fehlt und `setup claude` ohne `--check` läuft
+- **THEN** endet `setup` mit Exit-Code ungleich 0, ruft `openspec init` nicht auf und ändert weder Git-Konfiguration noch `.git/info/exclude`
+
 ### Requirement: Standardlauf wirkt nur lokal
 Ohne Schalter SHALL `setup` ausschließlich Dinge im lokalen Klon ändern und MUST keine Daten auf GitHub schreiben. Es setzt `core.hooksPath` auf `.githooks`, wenn dieser Ordner existiert, richtet die Agenten-Adapter ein und trägt deren Ordner in `.git/info/exclude` ein.
 
@@ -54,6 +58,10 @@ Ohne Schalter SHALL `setup` ausschließlich Dinge im lokalen Klon ändern und MU
 #### Scenario: Unbekannter Agent
 - **WHEN** ein Agent nicht in `agents.tsv` steht
 - **THEN** endet `setup` mit einem Fehler und ändert nichts
+
+#### Scenario: Aufruf aus einem anderen Ordner
+- **WHEN** `setup claude --root <Repo>` aus einem beliebigen Arbeitsordner läuft
+- **THEN** arbeiten `openspec`, `git` und `gh` im Ordner des Repos, nicht im Arbeitsordner des Aufrufs
 
 ### Requirement: Ausschlüsse in .git/info/exclude
 `setup` SHALL die Ordner der gewählten Agenten (nicht `agents`) einmalig in `.git/info/exclude` eintragen und MUST bestehende Einträge dort unverändert lassen. Wiederholte Läufe erzeugen keine doppelten Einträge.
@@ -94,7 +102,16 @@ Ohne Schalter SHALL `setup` ausschließlich Dinge im lokalen Klon ändern und MU
 
 #### Scenario: Nicht angemeldet
 - **WHEN** `gh` nicht angemeldet ist und `--labels` gesetzt ist
-- **THEN** endet `setup` mit einem Fehler und dem Hinweis auf `gh auth login`
+- **THEN** endet `setup` mit einem Fehler und dem Hinweis auf `gh auth login`, bevor irgendetwas geändert wird
+
+#### Scenario: Nicht angemeldet ohne Schalter
+- **WHEN** `gh` nicht angemeldet ist und `--labels` fehlt
+- **THEN** meldet `setup` einen Hinweis "Labels nicht geprüft" und der Exit-Code bleibt 0
+
+#### Scenario: Labels nicht abrufbar
+- **WHEN** `gh label list` scheitert (zum Beispiel in einem Klon ohne GitHub-Remote)
+- **THEN** ist das ohne `--labels` und mit `--check` nur ein Hinweis mit der Meldung von `gh`
+- **AND** mit `--labels` ein Fehler ohne angelegte Labels
 
 ### Requirement: Prüfmodus
 `setup --check` SHALL nur melden, was fehlt oder abweicht (Voraussetzungen, Adapter, Ausschlüsse, Labels, Konsistenz der Dateien unter `workflow/` über dieselbe Prüfung wie `flow validate`), und MUST nichts ändern. Der Exit-Code ist ungleich 0, wenn etwas fehlt, das ein normaler Lauf beheben müsste oder nicht beheben kann.
@@ -106,6 +123,10 @@ Ohne Schalter SHALL `setup` ausschließlich Dinge im lokalen Klon ändern und MU
 #### Scenario: Etwas fehlt
 - **WHEN** ein Ausschluss in `.git/info/exclude` fehlt
 - **THEN** meldet `setup --check` ihn, ändert die Datei nicht und endet mit Exit-Code ungleich 0
+
+#### Scenario: Fehlendes Label
+- **WHEN** ein Label fehlt und `gh` angemeldet ist
+- **THEN** meldet `setup --check` es mit Namen, legt es nicht an und endet mit Exit-Code ungleich 0
 
 ### Requirement: Idempotenz
 Ein zweiter Lauf von `setup` mit denselben Argumenten SHALL nichts verändern und MUST "nichts zu tun" melden.
