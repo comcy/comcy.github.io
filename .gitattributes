@@ -1,0 +1,4 @@
+# Daten und Skripte des Prozesses immer mit LF, auch unter Windows (der Leser akzeptiert beides)
+workflow/** text eol=lf
+scripts/** text eol=lf
+tests/** text eol=lf
