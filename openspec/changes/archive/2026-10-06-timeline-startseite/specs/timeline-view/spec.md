@@ -20,6 +20,7 @@ Die Startseite SHALL die Timeline als zweite Spalte neben Profil und neuesten Be
 #### Scenario: Keine Einträge
 - **WHEN** es keinen einzigen Timeline-Eintrag gibt
 - **THEN** zeigt die Startseite keine Timeline und keine leere Fläche
+- **AND** hat die Startseite dasselbe Layout wie die übrigen Seiten, ohne reservierte Spalte
 
 ### Requirement: Container mit fester Höhe
 Die Startseite SHALL die 8 neuesten Einträge direkt im ausgelieferten HTML enthalten, in einem Container mit begrenzter Höhe und eigenem Scrollen. Die Seite selbst MUST dadurch nicht länger werden.
@@ -57,6 +58,10 @@ Wenn der Nutzer das Ende der Timeline im Container erreicht und weitere Einträg
 - **AND** bei erneutem Erreichen des Endes die letzten 7 (Einträge 19 bis 25)
 - **AND** danach erfolgt kein weiterer Abruf
 
+#### Scenario: Container nicht gefüllt
+- **WHEN** die ersten 8 Einträge den Container nicht füllen
+- **THEN** liegt das Listenende schon im Sichtfeld und das nächste Fragment lädt ohne Scrollen
+
 #### Scenario: Höchstens 8 Einträge
 - **WHEN** es höchstens 8 Einträge gibt
 - **THEN** erfolgt kein Nachladen und es erscheint kein Link "Alles ansehen"
@@ -72,6 +77,13 @@ Es SHALL eine Seite `/timeline/` geben, die alle Einträge ohne Scroll-Container
 - **WHEN** JavaScript deaktiviert ist und es 20 Einträge gibt
 - **THEN** zeigt die Startseite 8 Einträge und einen Link "Alles ansehen"
 - **AND** zeigt `/timeline/` alle 20 Einträge
+
+### Requirement: Lesbarkeit in allen Farbvarianten
+Links, Datum und Beschreibung der Timeline SHALL in jeder Farbvariante (vier Schemata, hell und dunkel) einen Kontrast von mindestens 4,5:1 zum Hintergrund haben, die Punkte mindestens 3:1.
+
+#### Scenario: Helle Farbvarianten
+- **WHEN** ein helles Farbschema aktiv ist
+- **THEN** erreichen die Links der Timeline mindestens 4,5:1, auch bei "Alles ansehen"
 
 ### Requirement: Zugänglichkeit
 Die Timeline SHALL als Liste in Reihenfolge der Zeit ausgeliefert werden. Aufklappen MUST per Tastatur bedienbar sein, der Zustand MUST für Hilfstechnologien erkennbar sein und der Fokus sichtbar. Bei eingestellter reduzierter Bewegung MUST Animation entfallen.
