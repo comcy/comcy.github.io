@@ -16,9 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: pandoc installieren
-        run: sudo apt-get update && sudo apt-get install -y pandoc
-      - name: pandoc-Version
-        run: pandoc --version | head -1
+      - uses: ./.github/actions/setup-pandoc
       - name: Tests
         run: sh tests/run.sh

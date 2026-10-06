@@ -1,0 +1,11 @@
+name: pandoc einrichten
+description: Installiert pandoc aus der Paketquelle und gibt die Version im Log aus.
+runs:
+  using: composite
+  steps:
+    - name: pandoc installieren
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y pandoc
+    - name: pandoc-Version
+      shell: bash
+      run: pandoc --version | head -1
