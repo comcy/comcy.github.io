@@ -166,4 +166,48 @@ for n in 0 8 9; do
   esac
 done
 
+# 17. Ohne Einträge keine leere Spalte: die Startseite bekommt die Klasse home nur mit Timeline
+fresh leer-layout; build
+if ! grep -q 'class="home"' "$W/public/index.html"; then ok "ohne Einträge keine Klasse home (kein leeres Grid)"; else no "ohne Einträge keine Klasse home (kein leeres Grid)"; fi
+fresh voll-layout; post 2026-01-01-eins "Eins"; build
+if grep -q '<body class="home">' "$W/public/index.html" && grep -q '<main class="home">' "$W/public/index.html"; then ok "mit Einträgen Klasse home an body und main"; else no "mit Einträgen Klasse home an body und main"; fi
+
+# 18. Ende gleich Start (normalisiert) ist erlaubt, nur ein Ende davor bricht ab
+for paar in "2024-05-01 2024-05" "2024-05 2024-05-01" "2024 2024-01-01" "2024-05 2024-05"; do
+  set -- $paar; fresh "gleich-$1-$2"; bm gleich "Gleich" "$1" "$2" "Text."
+  if build; then ok "Ende $2 gleich Start $1 baut"; else no "Ende $2 gleich Start $1 baut"; fi
+done
+fresh davor; bm davor "Davor" 2024-05-10 2024-05 "Text."
+if build; then no "Ende 2024-05 vor Start 2024-05-10 bricht ab"; else ok "Ende 2024-05 vor Start 2024-05-10 bricht ab"; fi
+
+# 19. Gleiches normalisiertes Datum: Reihenfolge nach Art und Slug, nicht nach der Länge der Schreibweise
+fresh gleichstand
+post 2026-10-01-beitrag "Beitrag"; bm a-bm "Bookmark A" 2026-10-01 "" "Text."; bm z-bm "Bookmark Z" 2026-10 "" "Text."
+build
+got=$(timeline_html | grep -o '\(>Beitrag<\|Bookmark A\|Bookmark Z\)' | tr -d '<>' | tr '\n' '|')
+if [ "$got" = "Beitrag|Bookmark Z|Bookmark A|" ]; then ok "Gleichstand nach Art und Slug"; else no "Gleichstand nach Art und Slug (war: $got)"; fi
+
+# 20. Beiträge mit Monat oder Jahr werden so angezeigt, wie geschrieben
+fresh anzeige
+postd 2026-03-monat "Monatsbeitrag" 2026-03; postd 2026-01-jahr "Jahresbeitrag" 2026
+build; h=$(timeline_html | tr '\n' ' ')
+if printf '%s' "$h" | grep -q '<time datetime="2026-03">2026-03</time>' && printf '%s' "$h" | grep -q '<time datetime="2026">2026</time>'; then ok "Beiträge mit Monat und Jahr wie geschrieben"; else no "Beiträge mit Monat und Jahr wie geschrieben"; fi
+
+# 21. Der Zeitraum steht im aufgeklappten Teil, nicht in der Titelzeile
+fresh bereich
+bm zeit "Mit Zeitraum" 2024-05 2024-11 "Text."
+build; h=$(timeline_html | tr '\n' ' ')
+if printf '%s' "$h" | grep -q '</summary><p>Text.</p><p class="tl-range">2024-05 – 2024-11</p></details>' && ! printf '%s' "$h" | grep -q '<summary>[^<]*<time[^>]*>[^<]*</time>[^<]*2024-11'; then ok "Zeitraum im aufgeklappten Teil"; else no "Zeitraum im aufgeklappten Teil"; fi
+
+# 22. Jede Seite mit Datum hat den Pfad /<slug>/
+fresh seiten2
+for n in eins zwei; do printf -- '---\ntitle: Seite %s\ndate: 2026-08-0%s\n---\n\nText.\n' "$n" "$([ $n = eins ] && echo 1 || echo 2)" > "$W/pages/$n.md"; done
+build; h=$(timeline_html | tr '\n' ' ')
+if printf '%s' "$h" | grep -q 'href="/eins/">Seite eins' && printf '%s' "$h" | grep -q 'href="/zwei/">Seite zwei'; then ok "Seiten mit Datum verlinken auf /<slug>/"; else no "Seiten mit Datum verlinken auf /<slug>/"; fi
+
+# 23. Das Bookmark-Beispiel aus dem README baut wie beschrieben und zeigt den Zeitraum
+fresh readme
+awk '/^```markdown$/ { b = ""; inb = 1; next } /^```$/ { if (inb && b ~ /end: now/) { printf "%s", b; exit } inb = 0; next } inb { b = b $0 "\n" }' "$ROOT/README.md" > "$W/timeline/readme-beispiel.md"
+if [ -s "$W/timeline/readme-beispiel.md" ] && build && timeline_html | tr '\n' ' ' | grep -q 'Entwicklungsprozess mit OpenSpec aufgesetzt.*2026-10-04 – laufend'; then ok "README-Beispiel baut und zeigt den Zeitraum"; else no "README-Beispiel baut und zeigt den Zeitraum"; fi
+
 exit $FAIL
