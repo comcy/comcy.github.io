@@ -40,7 +40,12 @@ check_date() {
     { echo "Ungültiges Datum '$1' in $2" >&2; exit 1; }
 }
 
-# Timeline-Eintrag (liest Felder aus $date $end $kind $slug $title $desc): Beitrag mit Link, Bookmark ohne Seite
+# Normalisiert ein gültiges Datum auf JJJJ-MM-TT, ein fehlender Monat oder Tag zählt als der erste: norm_date <datum>
+norm_date() {
+  case ${#1} in 4) printf '%s-01-01' "$1" ;; 7) printf '%s-01' "$1" ;; *) printf '%s' "$1" ;; esac
+}
+
+# Timeline-Eintrag (liest Felder aus $kind $slug $date $end $title $desc): Beitrag mit Link, Bookmark ohne Seite
 timeline_item() {
   case $kind in
     page) printf '<li class="tl-item"><time datetime="%s">%s</time> <a href="%s/%s/">%s</a></li>\n' \
@@ -86,10 +91,10 @@ for f in posts/*.md; do
 done
 LC_ALL=C sort -r "$TMP/index" > "$TMP/sorted"
 
-# --- Timeline-Index: Beiträge und Bookmarks (key, datum, ende, art, slug, titel, beschreibung) ----------
+# --- Timeline-Index: Beiträge, Seiten und Bookmarks (key, art, slug, datum, ende, titel, beschreibung); der Schlüssel ist das normalisierte Datum, bei Gleichstand entscheiden Art und Slug ----------
 : > "$TMP/tl"
 while IFS=$US read -r date slug title tags desc; do
-  printf '%s\037%s\037\037post\037%s\037%s\037%s\n' "$date" "$date" "$slug" "$title" "$desc" >> "$TMP/tl"
+  printf '%s\037post\037%s\037%s\037\037%s\037%s\n' "$(norm_date "$date")" "$slug" "$date" "$title" "$desc" >> "$TMP/tl"
 done < "$TMP/sorted"
 # Seiten mit date: (außer Startseite und Galerie) und Bookmarks aus timeline/; Entwürfe wie im Blog
 for f in pages/*.md timeline/*.md; do
@@ -105,10 +110,10 @@ for f in pages/*.md timeline/*.md; do
   [ -n "$title" ] || { echo "Titel fehlt in $f" >&2; exit 1; }
   if [ -n "$end" ] && [ "$end" != now ]; then
     check_date "$end" "$f"
-    # ponytail: die drei Formate sind Präfixe voneinander, daher genügt der Zeichenvergleich (fehlender Teil = Anfang)
-    awk -v a="$end" -v b="$date" 'BEGIN { exit !(a < b) }' && { echo "Ende vor Start in $f" >&2; exit 1; }
+    # normalisiert verglichen: gleiches Datum in anderer Schreibweise ist kein Fehler
+    awk -v a="$(norm_date "$end")" -v b="$(norm_date "$date")" 'BEGIN { exit !(a < b) }' && { echo "Ende vor Start in $f" >&2; exit 1; }
   fi
-  printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\n' "$date" "$date" "$end" "$kind" "$slug" "$title" "$desc" >> "$TMP/tl"
+  printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\n' "$(norm_date "$date")" "$kind" "$slug" "$date" "$end" "$title" "$desc" >> "$TMP/tl"
 done
 LC_ALL=C sort -r "$TMP/tl" > "$TMP/tl.sorted"
 
@@ -128,20 +133,22 @@ render "$TMP/blog.md" "$OUT/blog/index.html" -M pagetitle=Blog
   # Timeline als rohes HTML, die Spalte liegt per CSS neben dem Inhalt (ohne Einträge entfällt sie)
   if [ -s "$TMP/tl.sorted" ]; then
     printf '\n```{=html}\n<aside class="timeline" aria-label="Timeline">\n<h2>Timeline</h2>\n<div class="timeline-scroll">\n<ol class="timeline-list">\n'
-    head -n 8 "$TMP/tl.sorted" | while IFS=$US read -r key date end kind slug title desc; do timeline_item; done
+    head -n 8 "$TMP/tl.sorted" | while IFS=$US read -r key kind slug date end title desc; do timeline_item; done
     printf '</ol>\n</div>\n'
     # ab dem 9. Eintrag führt ein Link auf die vollständige Seite
     [ "$(wc -l < "$TMP/tl.sorted")" -gt 8 ] && printf '<p class="timeline-more"><a href="%s/timeline/">Alles ansehen →</a></p>\n' "$BASE"
     printf '</aside>\n```\n'
   fi
 } > "$TMP/home.md"
-render "$TMP/home.md" "$OUT/index.html" -M home=true -M pagetitle=Start --metadata description="$SITE_DESCRIPTION"
+# Die Klasse home (breite Startseite mit Spalte) gilt nur mit Timeline, sonst bliebe die Spalte leer
+home_opt=; [ -s "$TMP/tl.sorted" ] && home_opt="-M home=true"
+render "$TMP/home.md" "$OUT/index.html" $home_opt -M pagetitle=Start --metadata description="$SITE_DESCRIPTION"
 
 # --- Timeline-Seite: alle Einträge, ohne Container (entfällt ohne Einträge) ---------------------------
 if [ -s "$TMP/tl.sorted" ]; then
   {
     printf -- '---\ntitle: Timeline\n---\n\n```{=html}\n<section class="timeline timeline-full">\n<ol class="timeline-list">\n'
-    while IFS=$US read -r key date end kind slug title desc; do timeline_item; done < "$TMP/tl.sorted"
+    while IFS=$US read -r key kind slug date end title desc; do timeline_item; done < "$TMP/tl.sorted"
     printf '</ol>\n</section>\n```\n'
   } > "$TMP/timeline.md"
   render "$TMP/timeline.md" "$OUT/timeline/index.html" -M pagetitle=Timeline
