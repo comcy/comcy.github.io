@@ -9,10 +9,12 @@ import pycheck  # liegt neben dieser Datei und läuft auch auf älterem Python
 pycheck.require_python()
 
 import argparse  # noqa: E402
+import shutil  # noqa: E402
 import sys  # noqa: E402
 from pathlib import Path  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+import labels  # noqa: E402
 import local  # noqa: E402
 import tools  # noqa: E402
 import workflow  # noqa: E402
@@ -56,7 +58,7 @@ def resolve_agents(root: Path, gewuenscht: list[str], funde: list[workflow.Findi
     return agenten, ordner, explizit
 
 
-def run(root: Path, gewuenscht: list[str], nur_pruefen: bool) -> int:
+def run(root: Path, gewuenscht: list[str], nur_pruefen: bool, mit_labels: bool = False) -> int:
     """Voraussetzungen, Agentenwahl und lokale Schritte; mit nur_pruefen werden die Schritte nur gemeldet."""
     funde: list[workflow.Finding] = []
     fehler, hinweise = check_prerequisites(root, funde)
@@ -71,15 +73,45 @@ def run(root: Path, gewuenscht: list[str], nur_pruefen: bool) -> int:
         summary(fehler, warnungen, hinweise)
         return 1
     try:
+        angemeldet = labels.logged_in(root) if shutil.which("gh") else False
+        if mit_labels and not nur_pruefen and not angemeldet:
+            print("FEHLER  gh ist nicht angemeldet: gh auth login")
+            summary(1, warnungen, hinweise)
+            return 1
         schritte = local.plan(root, agenten, ordner, explizit)
+        fehlende, label_hinweis = [], None
+        if angemeldet:
+            try:
+                fehlende = labels.missing_labels(root)
+            except local.SetupError as problem:
+                if mit_labels and not nur_pruefen:
+                    raise
+                label_hinweis = str(problem)  # ohne --labels kein Fehler, zum Beispiel ein Klon ohne GitHub-Remote
         if nur_pruefen:
             for schritt in schritte:
                 print(f"FEHLT   {schritt.label}")
-            summary(len(schritte), warnungen, hinweise)
-            return 1 if schritte else 0
+            for label in fehlende:
+                print(f"FEHLT   Label {label.name} (anlegen mit setup --labels)")
+            if not angemeldet or label_hinweis:
+                print("HINWEIS Labels nicht geprüft: " + (label_hinweis or "gh nicht angemeldet (gh auth login)"))
+                hinweise += 1
+            summary(len(schritte) + len(fehlende), warnungen, hinweise)
+            return 1 if schritte or fehlende else 0
         for schritt in schritte:
             schritt.apply()
             print(f"erledigt {schritt.label}")
+        if mit_labels:
+            for label in fehlende:
+                labels.create_label(root, label)
+                print(f"erledigt Label {label.name} angelegt")
+            schritte = schritte + [None] * len(fehlende)  # zählt für "nichts zu tun"
+        elif fehlende:
+            print(f"HINWEIS {plural(len(fehlende), 'Label fehlt', 'Labels fehlen')} "
+                  f"({', '.join(l.name for l in fehlende)}): mit setup --labels anlegen")
+            hinweise += 1
+        elif not angemeldet or label_hinweis:
+            print("HINWEIS Labels nicht geprüft: " + (label_hinweis or "gh nicht angemeldet (gh auth login)"))
+            hinweise += 1
     except local.SetupError as fehlermeldung:
         print(f"FEHLER  {fehlermeldung}")
         summary(1, warnungen, hinweise)
@@ -99,10 +131,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="setup", description="Lokalen Klon für den Prozess einrichten")
     parser.add_argument("agents", nargs="*", help="Agenten für den lokalen Adapter, zum Beispiel claude")
     parser.add_argument("--check", action="store_true", help="nur melden, was fehlt, nichts ändern")
+    parser.add_argument("--labels", action="store_true", help="fehlende Labels des Prozesses auf GitHub anlegen")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent,
                         help="Wurzel des Repos (mit workflow/ und scripts/setup.d/)")
     args = parser.parse_args(argv)
-    return run(args.root, args.agents, args.check)
+    return run(args.root, args.agents, args.check, args.labels)
 
 
 if __name__ == "__main__":

@@ -78,7 +78,7 @@ class Voraussetzungen(Basis):
         self.assertIn("1 Hinweis", r.stdout)
 
     def test_ohne_mindestversion_genuegt_vorhandensein(self):
-        self.stubs.add("gh", "irgendwas ohne Versionsnummer")
+        self.stubs.add("kvasir", "irgendwas ohne Versionsnummer")
         r = self.check()
         self.assertEqual(r.returncode, 0, r.stdout)
 
@@ -95,14 +95,15 @@ class Voraussetzungen(Basis):
 
 
 class OhneAenderung(Basis):
-    def test_check_aendert_nichts_und_ruft_nur_die_versionen_auf(self):
+    def test_check_aendert_nichts_und_ruft_nur_lesend_auf(self):
         vorher = self.zustand()
         r = self.check()
         self.assertEqual(r.returncode, 0, r.stdout)
         self.assertEqual(self.zustand(), vorher)
         aufrufe = self.stubs.calls()
         self.assertTrue(aufrufe)
-        self.assertTrue(all(a["args"] == ["--version"] for a in aufrufe), aufrufe)
+        lesend = (["--version"], ["auth", "status"], ["label", "list", "--limit", "500", "--json", "name"])
+        self.assertTrue(all(a["args"] in lesend for a in aufrufe), aufrufe)  # nur Versionen, Anmeldung, Label-Liste
 
     def test_check_legt_keine_dateien_an(self):
         vorher = sorted(p.relative_to(self.repo).as_posix() for p in self.repo.rglob("*") if ".git/" not in p.as_posix())
