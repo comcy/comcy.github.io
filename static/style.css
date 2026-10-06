@@ -222,7 +222,7 @@ main.home > .timeline { grid-column: 2; grid-row: 1 / span 99; align-self: start
 .tl-item::before { content: ""; position: absolute; left: calc(-1.25rem - 1px - .35rem); top: .25rem; width: .7rem; height: .7rem;
   border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--bg2); }
 .tl-item time { display: block; color: var(--muted); font-size: .8rem; }
-.tl-item a { text-decoration: none; font-weight: 600; }
+.tl-item a { text-decoration: none; font-weight: 600; color: color-mix(in srgb, var(--accent) 65%, var(--fg)); }
 .tl-item a:hover, .tl-item a:focus-visible { text-decoration: underline; }
 @media (max-width: 900px) { main.home { grid-template-columns: minmax(0, 1fr) 15rem; column-gap: 1.25rem; } }
 @media (max-width: 640px) {
@@ -232,7 +232,7 @@ main.home > .timeline { grid-column: 2; grid-row: 1 / span 99; align-self: start
 }
 
 /* Bookmarks in der Timeline: aufklappbarer Titel, Beschreibung und Zeitraum darunter */
-.tl-item details summary { cursor: pointer; font-weight: 600; color: var(--accent); list-style: none; }
+.tl-item details summary { cursor: pointer; font-weight: 600; color: color-mix(in srgb, var(--accent) 65%, var(--fg)); list-style: none; }
 .tl-item details summary::-webkit-details-marker { display: none; }
 .tl-item details summary::after { content: " ▸"; }
 .tl-item details[open] summary::after { content: " ▾"; }
@@ -242,5 +242,6 @@ main.home > .timeline { grid-column: 2; grid-row: 1 / span 99; align-self: start
 
 /* Link zur vollständigen Timeline und die Seite /timeline/ */
 .timeline-more { margin: .5rem 0 0; font-size: .9rem; }
+.timeline-more a { color: color-mix(in srgb, var(--accent) 65%, var(--fg)); }
 .timeline-full .timeline-list { margin-top: 1rem; }
 .tl-sentinel { height: 1px; list-style: none; }
