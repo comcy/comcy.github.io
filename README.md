@@ -25,9 +25,9 @@ Galeriebilder kommen nach `gallery/`, eine Bildunterschrift optional in `gallery
 
 ## Timeline
 
-Die Startseite zeigt eine Timeline mit den 8 neuesten Einträgen: alle Beiträge und Seiten mit `date:` im
+Die Startseite zeigt eine Timeline mit den `TL_MAX` neuesten Einträgen (Wert in `build.sh`, derzeit 8): alle Beiträge und Seiten mit `date:` im
 Frontmatter (nicht Startseite und Galerie, Entwürfe nur mit `DRAFTS=1`) sowie manuelle Bookmarks aus `timeline/`.
-Ein Bookmark ist eine Datei `timeline/JJJJ-MM-slug.md` ohne eigene Seite, die Beschreibung klappt auf:
+Ein Bookmark ist eine Datei `timeline/JJJJ-MM-TT-slug.md` (Datum im Namen nur zur Sortierung im Ordner) ohne eigene Seite, die Beschreibung klappt auf:
 
 ```markdown
 ---
@@ -66,6 +66,8 @@ Baut die Seite in temporären Klonen mit eigenen Beiträgen und prüft die Timel
 | `build.sh` | Build-Skript (POSIX sh) |
 | `site.conf` | Titel, Autor, URL |
 | `templates/page.html` | HTML-Template für pandoc |
+| `timeline/` | Manuelle Timeline-Einträge (Bookmarks), eine Datei je Eintrag |
+| `templates/timeline-meta.txt` | Metadaten-Vorlage für Seiten und Bookmarks der Timeline |
 | `tests/` | Shell-Checks, z. B. `timeline-check.sh` |
 | `static/` | CSS und andere Dateien, werden 1:1 kopiert |
 | `pages/` | Startseite, Über mich, Galerie-Text und weitere Seiten |

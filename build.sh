@@ -11,6 +11,7 @@ BASE=$(printf '%s' "$SITE_URL" | sed 's|^[a-z]*://[^/]*||')
 YEAR=$(date +%Y)
 # Prüfsumme von CSS und JS als Cache-Buster, damit Browser nach Änderungen sofort die neuen Dateien laden
 ASSET_V=$(cat static/style.css static/site.js | cksum | cut -d' ' -f1)
+TL_MAX=8  # Einträge der Timeline auf der Startseite; mehr führen zum Link "Alles ansehen" (README und tests/timeline-check.sh nennen den Wert)
 US=$(printf '\037')  # Feldtrenner im Index (kein Whitespace, damit leere Felder erhalten bleiben)
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -45,13 +46,16 @@ norm_date() {
   case ${#1} in 4) printf '%s-01-01' "$1" ;; 7) printf '%s-01' "$1" ;; *) printf '%s' "$1" ;; esac
 }
 
+# Feld <n> der Metadaten in $meta (tabgetrennt). cut statt read, weil read leere Felder bei Whitespace-IFS verschluckt: meta_field <n>
+meta_field() { printf '%s' "$meta" | cut -f"$1"; }
+
 # Timeline-Eintrag (liest Felder aus $kind $slug $date $end $title $desc): Beitrag mit Link, Bookmark ohne Seite
 timeline_item() {
   case $kind in
-    page) printf '<li class="tl-item"><time datetime="%s">%s</time> <a href="%s/%s/">%s</a></li>\n' \
-            "$date" "$date" "$BASE" "$slug" "$(xml_escape "$title")" ;;
-    post) printf '<li class="tl-item"><time datetime="%s">%s</time> <a href="%s/blog/%s/">%s</a></li>\n' \
-            "$date" "$date" "$BASE" "$slug" "$(xml_escape "$title")" ;;
+    post|page)
+      [ "$kind" = post ] && href="$BASE/blog/$slug/" || href="$BASE/$slug/"
+      printf '<li class="tl-item"><time datetime="%s">%s</time> <a href="%s">%s</a></li>\n' \
+        "$date" "$date" "$href" "$(xml_escape "$title")" ;;
     *) range=
        if [ -n "$end" ]; then
          [ "$end" = now ] && endtxt=laufend || endtxt=$end
@@ -76,15 +80,15 @@ for f in posts/*.md; do
   slug=$(basename "$f" .md)
   slug=${slug#[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-}
   meta=$(pandoc "$f" --to plain --wrap=none --template templates/meta.txt)
-  check_date "$(printf '%s' "$meta" | cut -f1)" "$f"
-  draft=$(printf '%s' "$meta" | cut -f3)
+  check_date "$(meta_field 1)" "$f"
+  draft=$(meta_field 3)
   if [ "$draft" = draft ] && [ "${DRAFTS:-0}" != 1 ]; then
     echo "Entwurf übersprungen: $f"
     continue
   fi
   printf '%s\t%s\n' "$slug" "$meta" |
     awk -F'\t' -v OFS="$US" '{print $2, $1, $3, $5, $6}' >> "$TMP/index"
-  render "$f" "$OUT/blog/$slug/index.html" -M post=true -M pagetitle="$(printf '%s' "$meta" | cut -f2)"
+  render "$f" "$OUT/blog/$slug/index.html" -M post=true -M pagetitle="$(meta_field 2)"
   # Bilder und andere Dateien neben dem Post: posts/<dateiname>/ wird mitkopiert
   [ -d "${f%.md}" ] && cp -R "${f%.md}/." "$OUT/blog/$slug/"
   echo "Post: $slug"
@@ -102,10 +106,9 @@ for f in pages/*.md timeline/*.md; do
   slug=$(basename "$f" .md); kind=bookmark
   case $f in pages/*) kind=page; case $slug in index|gallery) continue ;; esac ;; esac
   meta=$(pandoc "$f" --to plain --wrap=none --template templates/timeline-meta.txt)
-  date=$(printf '%s' "$meta" | cut -f1); end=$(printf '%s' "$meta" | cut -f2)
-  title=$(printf '%s' "$meta" | cut -f3); desc=$(printf '%s' "$meta" | cut -f4)
+  date=$(meta_field 1); end=$(meta_field 2); title=$(meta_field 3); desc=$(meta_field 4)
   [ "$kind" = page ] && [ -z "$date" ] && continue
-  [ "$(printf '%s' "$meta" | cut -f5)" = draft ] && [ "${DRAFTS:-0}" != 1 ] && continue
+  [ "$(meta_field 5)" = draft ] && [ "${DRAFTS:-0}" != 1 ] && continue
   check_date "$date" "$f"
   [ -n "$title" ] || { echo "Titel fehlt in $f" >&2; exit 1; }
   if [ -n "$end" ] && [ "$end" != now ]; then
@@ -133,10 +136,10 @@ render "$TMP/blog.md" "$OUT/blog/index.html" -M pagetitle=Blog
   # Timeline als rohes HTML, die Spalte liegt per CSS neben dem Inhalt (ohne Einträge entfällt sie)
   if [ -s "$TMP/tl.sorted" ]; then
     printf '\n```{=html}\n<aside class="timeline" aria-label="Timeline">\n<h2>Timeline</h2>\n<div class="timeline-scroll">\n<ol class="timeline-list">\n'
-    head -n 8 "$TMP/tl.sorted" | while IFS=$US read -r key kind slug date end title desc; do timeline_item; done
+    head -n "$TL_MAX" "$TMP/tl.sorted" | while IFS=$US read -r key kind slug date end title desc; do timeline_item; done
     printf '</ol>\n</div>\n'
-    # ab dem 9. Eintrag führt ein Link auf die vollständige Seite
-    [ "$(wc -l < "$TMP/tl.sorted")" -gt 8 ] && printf '<p class="timeline-more"><a href="%s/timeline/">Alles ansehen →</a></p>\n' "$BASE"
+    # ab dem Eintrag TL_MAX+1 führt ein Link auf die vollständige Seite
+    [ "$(wc -l < "$TMP/tl.sorted")" -gt "$TL_MAX" ] && printf '<p class="timeline-more"><a href="%s/timeline/">Alles ansehen →</a></p>\n' "$BASE"
     printf '</aside>\n```\n'
   fi
 } > "$TMP/home.md"
