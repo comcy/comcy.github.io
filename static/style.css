@@ -243,3 +243,4 @@ main.home > .timeline { grid-column: 2; grid-row: 1 / span 99; align-self: start
 /* Link zur vollständigen Timeline und die Seite /timeline/ */
 .timeline-more { margin: .5rem 0 0; font-size: .9rem; }
 .timeline-full .timeline-list { margin-top: 1rem; }
+.tl-sentinel { height: 1px; list-style: none; }
