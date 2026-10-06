@@ -19,3 +19,5 @@ Ebenen: Refinement-Status am Feature-Issue, Bau-Status an den Sub-Issues (Ticket
 Anweisung an Agenten: Wechselt die Arbeit in eine neue Phase, setze das passende `status:`-Label und sage es im Ergebnis. Entfernt der Agent kein altes Label, ist das ein Fehler, den der Mensch korrigiert.
 
 Azure DevOps o. ä.: gleiche Namen als Tags verwenden.
+
+**Quelle der Label-Namen, Farben und Beschreibungen** ist `workflow/states.tsv`; `python3 scripts/setup.py --labels` legt fehlende Labels an. Übergänge und Bedingungen stehen in `workflow/transitions.tsv`.

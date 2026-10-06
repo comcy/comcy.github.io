@@ -1,10 +1,9 @@
-# Spec Delta
+# workflow-definition Specification
 
 ## Purpose
-
 Legt fest, wie der Prozess als Daten unter `workflow/` beschrieben ist (Zustände, Übergänge, Phasen, Detektoren) und wie `flow validate` diese Dateien auf Konsistenz prüft.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Dateiformat mit Kopfzeile
 Jede Datei unter `workflow/` SHALL tabulatorgetrennt sein, Zeilen mit `#` am Anfang und leere Zeilen MUST ignoriert werden. Die erste übrige Zeile benennt die Spalten, Werte werden über diese Namen zugeordnet, nicht über die Position. Unbekannte zusätzliche Spalten MUST ignoriert werden, fehlende Pflichtspalten sind ein Fehler.
@@ -25,6 +24,10 @@ Jede Datei unter `workflow/` SHALL tabulatorgetrennt sein, Zeilen mit `#` am Anf
 - **WHEN** eine Datei Windows-Zeilenenden (CRLF) hat
 - **THEN** werden die Werte ohne das Zeilenende-Zeichen gelesen
 
+#### Scenario: Sonderzeichen
+- **WHEN** ein Wert ein Formfeed- oder Zeilentabulator-Zeichen enthält
+- **THEN** trennt es keine Zeile, nur `\n`, `\r\n` und `\r` tun das
+
 ### Requirement: Zustände
 `workflow/states.tsv` SHALL die Zustände mit `id`, `kind` (`triage`, `status` oder `terminal`), `color` und `description` enthalten, optional `enabled` (`yes` oder `no`, Standard `yes`). Die `id` MUST in der Datei eindeutig sein und ist bei `triage` und `status` der Name des Labels. Die Farbe MUST aus sechs Hex-Zeichen bestehen, bei `terminal` darf sie `-` sein. Es MUST genau einen Zustand der Art `terminal` geben.
 
@@ -34,6 +37,10 @@ Jede Datei unter `workflow/` SHALL tabulatorgetrennt sein, Zeilen mit `#` am Anf
 
 #### Scenario: Doppelte Kennung
 - **WHEN** zwei Zeilen dieselbe `id` haben
+- **THEN** meldet `flow validate` einen Fehler mit Datei und Zeile
+
+#### Scenario: Ungültiger Wert für enabled
+- **WHEN** `enabled` weder `yes` noch `no` ist
 - **THEN** meldet `flow validate` einen Fehler mit Datei und Zeile
 
 #### Scenario: Ungültige Farbe oder fehlende Beschreibung
@@ -53,6 +60,14 @@ Jede Datei unter `workflow/` SHALL tabulatorgetrennt sein, Zeilen mit `#` am Anf
 
 #### Scenario: Übergang über Dimensionen
 - **WHEN** ein Übergang von einem `triage`-Zustand zu einem `status`-Zustand führt und `from` nicht `-` ist
+- **THEN** meldet `flow validate` einen Fehler
+
+#### Scenario: Aus dem terminalen Zustand
+- **WHEN** ein Übergang von einem Zustand der Art `terminal` ausgeht
+- **THEN** meldet `flow validate` einen Fehler
+
+#### Scenario: Leerer Auslöser
+- **WHEN** `trigger` leer ist
 - **THEN** meldet `flow validate` einen Fehler
 
 #### Scenario: Start und terminaler Zustand
@@ -86,7 +101,7 @@ Jede Datei unter `workflow/` SHALL tabulatorgetrennt sein, Zeilen mit `#` am Anf
 - **THEN** meldet `flow validate` einen Fehler
 
 ### Requirement: Warnungen
-`flow validate` SHALL Auffälligkeiten als Warnung melden, die keinen Fehlercode erzeugen: Verweise auf Zustände oder Phasen mit `enabled=no`, ein aktivierter Zustand ohne ein- oder ausgehenden Übergang (außer `terminal`) und Phasen-IDs, die nicht in aufsteigender Reihenfolge stehen. Mit `--strict` MUST jede Warnung zu einem Fehler werden.
+`flow validate` SHALL Auffälligkeiten als Warnung melden, die keinen Fehlercode erzeugen: Verweise auf Zustände mit `enabled=no` (Phasen werden von nichts referenziert), ein aktivierter Zustand ohne eingehenden Übergang oder, außer bei `terminal`, ohne ausgehenden Übergang und Phasen-IDs, die nicht in aufsteigender Reihenfolge stehen. Mit `--strict` MUST jede Warnung zu einem Fehler werden.
 
 #### Scenario: Verweis auf deaktivierten Zustand
 - **WHEN** ein aktivierter Übergang auf einen Zustand mit `enabled=no` zeigt
@@ -97,7 +112,7 @@ Jede Datei unter `workflow/` SHALL tabulatorgetrennt sein, Zeilen mit `#` am Anf
 - **THEN** ist der Exit-Code ungleich 0
 
 ### Requirement: Befehl flow validate
-`flow validate` SHALL alle Dateien unter `workflow/` prüfen, ohne Netzzugriff und ohne etwas zu ändern. Jeden Fund MUST es als `datei:zeile: meldung` ausgeben, danach eine Zusammenfassung mit Zahl der Fehler und Warnungen. Bei mindestens einem Fehler MUST der Exit-Code ungleich 0 sein.
+`flow validate` SHALL alle Dateien unter `workflow/` prüfen, ohne Netzzugriff und ohne etwas zu ändern. Jeden Fund MUST es als `datei:zeile: Stufe: meldung` ausgeben (Stufe ist Fehler oder Warnung), danach eine Zusammenfassung mit Zahl der Fehler und Warnungen. Bei mindestens einem Fehler MUST der Exit-Code ungleich 0 sein.
 
 #### Scenario: Gültige Daten
 - **WHEN** alle Dateien gültig sind

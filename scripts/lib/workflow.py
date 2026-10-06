@@ -56,7 +56,8 @@ def read_table(path: Path, rel: str, findings: list[Finding]) -> Table | None:
         return None
     text = path.read_bytes().decode("utf-8-sig")
     table: Table | None = None
-    for nummer, zeile in enumerate(text.splitlines(), start=1):
+    # nur \n, \r\n und \r trennen Zeilen (str.splitlines trennt auch an \x0b, \x0c und Unicode-Zeichen)
+    for nummer, zeile in enumerate(re.split(r"\r\n|\n|\r", text), start=1):
         if not zeile.strip() or zeile.lstrip().startswith("#"):
             continue
         zellen = zeile.split("\t")

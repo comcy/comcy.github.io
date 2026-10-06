@@ -110,6 +110,13 @@ class LabelsAnlegen(MitRepo):
         r = self.run_setup("--labels")
         self.assertEqual(r.returncode, 1, r.stdout)
 
+    def test_label_vergleich_ignoriert_die_grossschreibung(self):
+        # GitHub unterscheidet Label-Namen nicht nach Groß- und Kleinschreibung
+        self.gh(vorhanden=[n.upper() for n, _, _ in self.zustands_labels()])
+        r = self.run_setup("--labels")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.create_aufrufe(), [])
+
     def test_zweiter_lauf_legt_nichts_mehr_an(self):
         self.gh(vorhanden=[])
         self.run_setup("--labels")
@@ -131,6 +138,12 @@ class PruefmodusLabels(MitRepo):
         r = self.run_setup("--check")
         self.assertEqual(r.returncode, 1, r.stdout)
         self.assertIn("wontfix", r.stdout)
+        self.assertEqual([a for a in self.stubs.calls() if a["args"][:2] == ["label", "create"]], [])
+
+    def test_check_mit_labels_schalter_legt_ebenfalls_nichts_an(self):
+        self.gh(vorhanden=[])
+        r = self.run_setup("--check", "--labels")
+        self.assertEqual(r.returncode, 1, r.stdout)
         self.assertEqual([a for a in self.stubs.calls() if a["args"][:2] == ["label", "create"]], [])
 
     def test_check_alle_vorhanden_ist_gruen(self):

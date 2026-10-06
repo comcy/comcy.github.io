@@ -84,6 +84,15 @@ Was der Prozess gefunden hat:
 - **`tasks.md` nach Schichten:** `/to-tickets` verlangt vertikale Scheiben. Die Task-Regel verlangt jetzt Scheiben, ob das reicht, zeigt der nächste Change.
 - **Specs nachgezogen:** Beim Archivieren mussten die Specs an den gebauten Stand angepasst werden (Gleichstand beim Sortieren, Ende gleich Start, Lesbarkeit). Specs, die vor dem Bauen entstehen, sind eine Annahme, keine Wahrheit.
 
+## Der zweite Change: ein Werkzeug, das sich selbst einrichtet
+
+Nach der Timeline kam ein Werkzeug für den Prozess selbst: Zustände, Übergänge und Phasen als Daten (`workflow/*.tsv`), ein Befehl, der sie prüft (`flow validate`), und ein Setup, das nach dem Klonen Voraussetzungen prüft, die Adapter für den eigenen Agenten einrichtet und Labels anlegt (`setup.py`). Es läuft unter Linux, macOS und Windows (Python, nur Standardbibliothek), und das ist in der CI auf allen drei Systemen belegt.
+
+Das Besondere: Ich habe die sechs Tickets einmal komplett selbstständig umsetzen lassen. Pro Ticket erst die Tests (von außen, mit Stub-Programmen für `gh` und `openspec`), dann der Code, dann ein Pull Request, CI auf drei Systemen und Merge bei Grün. Erst am Ende habe ich das Ergebnis angesehen. Was dabei auffiel:
+- Die Teststellen von außen tragen: Ein Stub-Programm schrieb in einem frühen Lauf ins echte Repo, weil es im Arbeitsordner des Tests lief. Daraus wurden zwei Schutzmaßnahmen (Arbeitsordner immer das Repo, Stubs schreiben nur im Testordner).
+- Ein manueller Probelauf mit den echten Programmen in einem Wegwerf-Klon fand etwas, das die Stubs nicht zeigen konnten: `gh label list` scheitert in einem Klon ohne GitHub-Remote.
+- Das Review vor dem Archivieren fand nach 89 grünen Tests noch sechs echte Fehler.
+
 ## Noch zu dokumentieren
 
 - Erster Change von der Idee bis zum Archive.

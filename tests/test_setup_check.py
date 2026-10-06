@@ -120,6 +120,16 @@ class Daten(Basis):
         self.assertEqual(r.returncode, 1)
         self.assertRegex(r.stdout, r"workflow/states\.tsv:\d+: Fehler: ungültige Farbe 'zzzzzz'")
 
+    def test_warnungen_aus_den_prozessdaten_aendern_den_exit_code_nicht(self):
+        pfad = self.repo / "workflow" / "states.tsv"
+        with pfad.open("a", encoding="utf-8", newline="\n") as f:
+            f.write("losgeloest\tstatus\t123456\tOhne Übergänge\n")  # erzeugt nur Warnungen
+        self.gh()  # das neue Label gibt es auf GitHub, sonst fehlte es
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("Warnung", r.stdout)
+        self.assertRegex(r.stdout, r"0 Fehler, [1-9]\d* Warnungen")
+
     def test_tools_datei_mit_fehlender_spalte(self):
         self.set_tools("name\tlevel\tversion_cmd\thint\ngit\trequired\tgit --version\tx\n")
         r = self.check()

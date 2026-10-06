@@ -13,6 +13,7 @@ import sys  # noqa: E402
 from pathlib import Path  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+import proc  # noqa: E402
 import workflow  # noqa: E402
 
 
@@ -27,8 +28,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    # Ausgabe immer als UTF-8, damit sie unter Windows (Umleitung, CI) nicht von der Konsolenkodierung abhängt
-    sys.stdout.reconfigure(encoding="utf-8")
+    proc.utf8_output()
     parser = argparse.ArgumentParser(prog="flow", description="Befehle für die Prozessdaten")
     sub = parser.add_subparsers(dest="command", required=True)
     v = sub.add_parser("validate", help="Dateien unter workflow/ auf Konsistenz prüfen")

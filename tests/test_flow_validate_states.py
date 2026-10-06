@@ -94,6 +94,11 @@ class Leser(WithStates):
         r = self.write_states(GOOD, newline="\r\n")
         self.assertEqual(r.returncode, 0, r.stdout)
 
+    def test_sonderzeichen_in_der_beschreibung_trennen_keine_zeilen(self):
+        # \x0b und \x0c gelten bei str.splitlines als Zeilenende, in einer Datei sind sie nur Zeichen
+        r = self.write_states([GOOD[0].replace("evaluate", "eval\x0cuate"), *GOOD[1:]])
+        self.assertEqual(r.returncode, 0, r.stdout)
+
     def test_kommentare_und_leerzeilen_werden_ignoriert(self):
         r = self.write_states(["# Kommentar", "", *GOOD, "   ", "# noch einer"])
         self.assertEqual(r.returncode, 0, r.stdout)
@@ -173,6 +178,8 @@ class Zustaende(WithStates):
 
 
 class Versionspruefung(unittest.TestCase):
+    # ponytail: Ausnahme von "Tests von außen": ein Test-Interpreter kann nicht als Python 3.9 starten, deshalb wird die
+    # Funktion direkt aufgerufen. Der Start unter echtem altem Python ist nicht geprüft.
     def test_zu_altes_python_meldet_die_geforderte_version(self):
         sys.path.insert(0, str(REPO / "scripts"))
         try:
