@@ -1,0 +1,11 @@
+# Programme, die der Prozess braucht. min_version: Mindestversion (Zahlen mit Punkten) oder - (Vorhandensein genügt).
+# level: required (fehlt es, bricht setup ab) oder recommended (nur ein Hinweis). version_cmd: Aufruf, dessen Ausgabe die
+# Version enthält. hint: was zu tun ist, wenn das Programm fehlt oder zu alt ist.
+# Mindestversionen: node 20.19 (OpenSpec), openspec 1.14 (getestet), pandoc 3.1 (Version der CI); git und gh ohne Angabe.
+name	min_version	level	version_cmd	hint
+git	-	required	git --version	https://git-scm.com
+gh	-	required	gh --version	https://cli.github.com, danach gh auth login
+node	20.19	required	node --version	https://nodejs.org
+openspec	1.14	required	openspec --version	npm i -g @fission-ai/openspec@latest
+pandoc	3.1	required	pandoc --version	Paketmanager, zum Beispiel pacman -S pandoc-cli oder brew install pandoc
+kvasir	-	recommended	kvasir --version	siehe kvasir-Repo (install.sh), nur für Graph und Stepper nötig
