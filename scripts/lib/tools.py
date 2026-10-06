@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import re
-import shutil
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+import proc
 from workflow import Finding, Row, missing_columns, read_table
 
 TOOLS_FILE = "scripts/setup.d/tools.tsv"
@@ -57,26 +56,28 @@ def at_least(installiert: tuple[int, ...], minimum: tuple[int, ...]) -> bool:
     return installiert + (0,) * (laenge - len(installiert)) >= minimum + (0,) * (laenge - len(minimum))
 
 
+def version_text(version: tuple[int, ...]) -> str:
+    return ".".join(map(str, version))
+
+
 def check_tool(zeile: Row) -> Result:
     v = zeile.values
     name, minimum = v["name"], v["min_version"]
-    kommando = v["version_cmd"].split()
+    kommando = v["version_cmd"].split()  # ponytail: einfache Aufrufe, Pfade mit Leerzeichen bräuchten Anführungszeichen
     fehlt = "fehlt (erforderlich)" if v["level"] == "required" else "fehlt (empfohlen)"
     status = "error" if v["level"] == "required" else "hint"
-    exe = shutil.which(kommando[0])
-    if exe is None:
+    if proc.find(kommando[0]) is None:
         return Result(status, f"{name} {fehlt}: {v['hint']}")
     try:
-        lauf = subprocess.run([exe, *kommando[1:]], capture_output=True, text=True, encoding="utf-8",
-                              errors="replace", timeout=30)
-    except (OSError, subprocess.TimeoutExpired) as fehler:
-        return Result(status, f"{name} lässt sich nicht aufrufen ({fehler}): {v['hint']}")
+        lauf = proc.run(kommando[0], kommando[1:])
+    except proc.SetupError as fehler:
+        return Result(status, f"{name}: {fehler}: {v['hint']}")
     version = parse_version(lauf.stdout + "\n" + lauf.stderr)
     if minimum == "-":
-        return Result("ok", f"{name} {'.'.join(map(str, version)) if version else 'vorhanden'}")
+        return Result("ok", f"{name} {version_text(version) if version else 'vorhanden'}")
     if version is None:
         return Result(status, f"{name}: Version nicht erkennbar, {minimum} oder neuer erwartet: {v['hint']}")
     mindest = tuple(int(t) for t in minimum.split("."))
     if not at_least(version, mindest):
-        return Result(status, f"{name} {'.'.join(map(str, version))} ist zu alt, {minimum} oder neuer nötig: {v['hint']}")
-    return Result("ok", f"{name} {'.'.join(map(str, version))}")
+        return Result(status, f"{name} {version_text(version)} ist zu alt, {minimum} oder neuer nötig: {v['hint']}")
+    return Result("ok", f"{name} {version_text(version)}")

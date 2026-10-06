@@ -77,12 +77,12 @@ class MitRepo(unittest.TestCase):
     def set_tools(self, text):
         (self.repo / "scripts" / "setup.d" / "tools.tsv").write_bytes(text.encode("utf-8"))
 
-    def run_setup(self, *args, entfernen=()):
-        """Ruft setup.py als Prozess auf; entfernen: Stub-Programme, die fehlen sollen."""
+    def run_setup(self, *args, entfernen=(), cwd=None):
+        """Ruft setup.py als Prozess auf; entfernen: Stub-Programme, die fehlen sollen; cwd: Arbeitsordner des Aufrufs."""
         for name in entfernen:
             (self.stubs.dir / (f"{name}.cmd" if sys.platform == "win32" else name)).unlink()
         return subprocess.run([sys.executable, str(SETUP), "--root", str(self.repo), *args], capture_output=True,
-                              text=True, encoding="utf-8", env=self.stubs.env())
+                              text=True, encoding="utf-8", env=self.stubs.env(), cwd=cwd)
 
     def git_config(self, schluessel):
         r = subprocess.run(["git", "-C", str(self.repo), "config", "--local", "--get", schluessel],

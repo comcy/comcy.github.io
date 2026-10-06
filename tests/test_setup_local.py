@@ -2,7 +2,9 @@
 
 Aufruf als Prozess in einem temporären Git-Repo, Stub-Programme im PATH, echtes git für die Konfiguration.
 """
+import os
 import shutil
+import sys
 import unittest
 
 from support import MitRepo, skill_datei
@@ -55,6 +57,48 @@ class AgentenWahl(MitRepo):
         self.run_setup("agents", "claude", "claude")
         init = self.aufrufe("openspec", "init")
         self.assertEqual(init[0]["args"][init[0]["args"].index("--tools") + 1], "agents,claude")
+
+
+class AdapterErkennung(MitRepo):
+    def test_ein_fremder_agentenordner_ohne_skills_gilt_nicht_als_adapter(self):
+        # Claude Code legt .claude/ selbst an (Einstellungen), das ist noch kein Adapter von openspec
+        self.adapter_da()  # die Basis ist da, nur .claude/ ist zweideutig
+        (self.repo / ".claude").mkdir()
+        (self.repo / ".claude" / "settings.local.json").write_text("{}", encoding="utf-8")
+        self.openspec(init_schreibt=CLAUDE_DATEIEN)
+        r = self.run_setup("claude")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(len(self.aufrufe("openspec", "init")), 1, self.stubs.calls())
+
+    def test_agents_als_einziges_argument_behaelt_die_gespeicherte_wahl(self):
+        self.openspec(init_schreibt=CLAUDE_DATEIEN)
+        self.run_setup("claude")
+        self.run_setup("agents")
+        self.assertEqual(self.git_config("setup.agents"), "claude")
+
+    def test_aufruf_aus_einem_anderen_ordner_arbeitet_im_repo(self):
+        import tempfile
+        self.openspec(init_schreibt=CLAUDE_DATEIEN)
+        with tempfile.TemporaryDirectory() as fremd:
+            r = self.run_setup("claude", cwd=fremd)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertEqual(os.listdir(fremd), [])
+        self.assertTrue((self.repo / ".claude" / "skills" / "openspec-propose" / "SKILL.md").is_file())
+        self.assertEqual(self.git_config("setup.agents"), "claude")
+
+    @unittest.skipIf(sys.platform == "win32" or (hasattr(os, "geteuid") and os.geteuid() == 0),
+                     "Schreibschutz per chmod greift nicht unter Windows oder als root")
+    def test_fehlgeschlagenes_git_config_ist_ein_fehler_und_wird_nicht_als_erledigt_gemeldet(self):
+        self.openspec(init_schreibt=CLAUDE_DATEIEN)
+        git_ordner = self.repo / ".git"
+        git_ordner.chmod(0o555)  # git config kann die Sperrdatei nicht anlegen
+        try:
+            r = self.run_setup("claude")
+        finally:
+            git_ordner.chmod(0o755)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertNotIn("erledigt Agentenwahl", r.stdout)
+        self.assertIn("git config", r.stdout)
 
 
 class Ausschluesse(MitRepo):
@@ -134,6 +178,13 @@ class AktuelleSkills(MitRepo):
         self.assertIn("Adapter veraltet", r.stdout)
         self.assertEqual(self.aufrufe("openspec", "update"), [])
         self.assertEqual(self.aufrufe("openspec", "init"), [])
+
+    def test_aelteres_openspec_als_die_skills_loest_kein_update_aus(self):
+        for pfad, text in skill_datei("1.15.0").items():  # Skills von einem neueren openspec (1.14.0 ist installiert)
+            (self.repo / pfad).write_text(text, encoding="utf-8")
+        r = self.run_setup()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.aufrufe("openspec", "update"), [])
 
     def test_gleiche_version_braucht_kein_update(self):
         for pfad, text in skill_datei("1.14.0").items():

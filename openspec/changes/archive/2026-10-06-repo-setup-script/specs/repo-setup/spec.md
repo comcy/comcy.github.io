@@ -41,7 +41,7 @@ Ohne Schalter SHALL `setup` ausschließlich Dinge im lokalen Klon ändern und MU
 - **THEN** bleibt `core.hooksPath` unverändert
 
 ### Requirement: Agenten-Adapter
-`setup` SHALL die Adapter für die Agenten einrichten, die als Argumente genannt werden, sonst die in `git config --local setup.agents` gespeicherten, sonst nur `agents`. Es MUST dazu `openspec init --tools agents[,<agent>…]` aufrufen und die Wahl in `setup.agents` speichern. Die Ordner der Adapterdateien stehen in `scripts/setup.d/agents.tsv`, ein unbekannter Agent MUST einen Fehler mit dem Hinweis auf diese Datei ergeben.
+`setup` SHALL die Adapter für die Agenten einrichten, die als Argumente genannt werden, sonst die in `git config --local setup.agents` gespeicherten, sonst nur `agents`. Es MUST dazu `openspec init --tools agents[,<agent>…]` (ohne Animation, im Ordner des Repos) aufrufen und die Wahl in `setup.agents` speichern. Ein Adapter gilt als vorhanden, wenn openspec dort Skills erzeugt hat (`<Ordner>skills/openspec-*/SKILL.md`), ein bloßer Ordner genügt nicht. `agents` allein ändert die gespeicherte Wahl nicht. Die Ordner der Adapterdateien stehen in `scripts/setup.d/agents.tsv`, ein unbekannter Agent MUST einen Fehler mit dem Hinweis auf diese Datei ergeben.
 
 #### Scenario: Agent als Argument
 - **WHEN** `setup claude` läuft
@@ -54,6 +54,18 @@ Ohne Schalter SHALL `setup` ausschließlich Dinge im lokalen Klon ändern und MU
 #### Scenario: Keine Wahl
 - **WHEN** weder Argument noch gespeicherte Wahl vorhanden sind
 - **THEN** richtet `setup` nur `agents` ein und weist auf das Argument für den eigenen Agenten hin
+
+#### Scenario: Fremder Agentenordner
+- **WHEN** `.claude/` nur Einstellungen enthält (keine Skills von openspec)
+- **THEN** gilt der Adapter als fehlend und `openspec init` läuft
+
+#### Scenario: Nur agents als Argument
+- **WHEN** `setup agents` läuft und `setup.agents` ist `claude`
+- **THEN** bleibt `claude` gespeichert
+
+#### Scenario: Git-Konfiguration schlägt fehl
+- **WHEN** `git config` einen Fehler meldet
+- **THEN** meldet `setup` den Fehler, gibt den Schritt nicht als erledigt aus und endet mit Exit-Code ungleich 0
 
 #### Scenario: Unbekannter Agent
 - **WHEN** ein Agent nicht in `agents.tsv` steht
@@ -75,18 +87,22 @@ Ohne Schalter SHALL `setup` ausschließlich Dinge im lokalen Klon ändern und MU
 - **THEN** bleibt `.git/info/exclude` unverändert
 
 ### Requirement: Adapter aktuell halten
-`setup` SHALL die installierte `openspec`-Version mit der Version in den erzeugten Skills (`generatedBy`) vergleichen. Weicht sie ab, MUST ein normaler Lauf `openspec update` aufrufen, `--check` MUST "Adapter veraltet" melden und nichts ändern.
+`setup` SHALL die installierte `openspec`-Version mit der Version in den erzeugten Skills (`generatedBy`) vergleichen. Ist die installierte Version neuer, MUST ein normaler Lauf `openspec update` aufrufen (eine ältere setzt die Skills nicht zurück), `--check` MUST "Adapter veraltet" melden und nichts ändern.
 
 #### Scenario: Version abweichend
 - **WHEN** die Skills mit einer älteren `openspec`-Version erzeugt wurden
 - **THEN** ruft ein normaler Lauf `openspec update` auf
+
+#### Scenario: Älteres openspec
+- **WHEN** die Skills mit einer neueren `openspec`-Version erzeugt wurden als der installierten
+- **THEN** ruft `setup` `openspec update` nicht auf
 
 #### Scenario: Prüfung ohne Änderung
 - **WHEN** `--check` läuft und die Version abweicht
 - **THEN** meldet es "Adapter veraltet" und ruft `openspec update` nicht auf
 
 ### Requirement: Labels nur mit Schalter
-`setup --labels` SHALL die Labels für alle aktivierten Zustände der Art `triage` und `status` aus `workflow/states.tsv` anlegen, mit Farbe und Beschreibung, und MUST vorhandene Labels unverändert lassen. Ohne den Schalter meldet `setup` nur, wie viele Labels fehlen. Ohne angemeldetes `gh` ergibt `--labels` einen Fehler mit dem Hinweis `gh auth login`.
+`setup --labels` SHALL die Labels für alle aktivierten Zustände der Art `triage` und `status` aus `workflow/states.tsv` anlegen, mit Farbe und Beschreibung, und MUST vorhandene Labels unverändert lassen. Labelnamen werden ohne Beachtung der Groß- und Kleinschreibung verglichen, wie GitHub es tut. Ohne den Schalter meldet `setup` nur, wie viele Labels fehlen. Ohne angemeldetes `gh` ergibt `--labels` einen Fehler mit dem Hinweis `gh auth login`.
 
 #### Scenario: Fehlende Labels anlegen
 - **WHEN** `setup --labels` läuft und zwei Labels fehlen
@@ -95,6 +111,10 @@ Ohne Schalter SHALL `setup` ausschließlich Dinge im lokalen Klon ändern und MU
 #### Scenario: Vorhandene Labels
 - **WHEN** alle Labels existieren
 - **THEN** legt `setup --labels` nichts an
+
+#### Scenario: Groß- und Kleinschreibung
+- **WHEN** GitHub ein Label `Needs-Triage` führt und `states.tsv` `needs-triage` nennt
+- **THEN** gilt das Label als vorhanden
 
 #### Scenario: Hinweis ohne Schalter
 - **WHEN** `setup` ohne `--labels` läuft und Labels fehlen
@@ -123,6 +143,10 @@ Ohne Schalter SHALL `setup` ausschließlich Dinge im lokalen Klon ändern und MU
 #### Scenario: Etwas fehlt
 - **WHEN** ein Ausschluss in `.git/info/exclude` fehlt
 - **THEN** meldet `setup --check` ihn, ändert die Datei nicht und endet mit Exit-Code ungleich 0
+
+#### Scenario: Warnungen ändern den Exit-Code nicht
+- **WHEN** `workflow/` nur Warnungen erzeugt
+- **THEN** endet `setup --check` mit Exit-Code 0
 
 #### Scenario: Fehlendes Label
 - **WHEN** ein Label fehlt und `gh` angemeldet ist

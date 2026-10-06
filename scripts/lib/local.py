@@ -6,12 +6,12 @@ Lauf führt sie aus, `--check` meldet sie nur. So gibt es für beide Modi diesel
 from __future__ import annotations
 
 import re
-import shutil
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+import proc
+from proc import SetupError
 from tools import parse_version
 from workflow import Finding, missing_columns, read_table
 
@@ -20,10 +20,6 @@ AGENTS_REQUIRED = ("agent", "folder")
 BASE_TOOLS = "agents"          # agentenneutrale Basis (.agents/), eingecheckt
 BASE_FOLDER = ".agents/skills"  # dort liegen die Skills der Basis
 HOOKS_DIR = ".githooks"
-
-
-class SetupError(Exception):
-    """Ein Schritt ist fehlgeschlagen; die Meldung geht unverändert an die Ausgabe."""
 
 
 @dataclass
@@ -50,12 +46,14 @@ def read_agents(root: Path, findings: list[Finding]) -> dict[str, str]:
     return agenten
 
 
-def git(root: Path, *args: str) -> subprocess.CompletedProcess:
-    exe = shutil.which("git")
-    if exe is None:
-        raise SetupError("git nicht gefunden")
-    return subprocess.run([exe, "-C", str(root), *args], capture_output=True, text=True, encoding="utf-8",
-                          errors="replace")
+def git(root: Path, *args: str):
+    return proc.run("git", ["-C", str(root), *args])
+
+
+def git_config_set(root: Path, schluessel: str, wert: str) -> None:
+    antwort = git(root, "config", "--local", schluessel, wert)
+    if antwort.returncode != 0:
+        raise SetupError(f"git config {schluessel} ist fehlgeschlagen: {antwort.stderr.strip()}")
 
 
 def stored_agents(root: Path) -> list[str]:
@@ -72,6 +70,12 @@ def exclude_path(root: Path) -> Path:
     return pfad if pfad.is_absolute() else root / pfad
 
 
+def adapter_present(root: Path, ordner: str) -> bool:
+    """Ein Adapter gilt als vorhanden, wenn openspec dort Skills erzeugt hat; ein bloßer Ordner (zum Beispiel
+    .claude/ mit Einstellungen von Claude Code) genügt nicht."""
+    return any((root / ordner / "skills").glob("openspec-*/SKILL.md"))
+
+
 def generated_by(root: Path) -> str | None:
     """Version von openspec, mit der die Skills der Basis erzeugt wurden (generatedBy im Kopf der SKILL.md)."""
     for skill in sorted((root / BASE_FOLDER).glob("*/SKILL.md")):
@@ -82,20 +86,16 @@ def generated_by(root: Path) -> str | None:
 
 
 def installed_openspec() -> str | None:
-    exe = shutil.which("openspec")
-    if exe is None:
+    if proc.find("openspec") is None:
         return None
-    lauf = subprocess.run([exe, "--version"], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    lauf = proc.run("openspec", ["--version"])
     version = parse_version(lauf.stdout + "\n" + lauf.stderr)
     return ".".join(map(str, version)) if version else None
 
 
 def run_openspec(root: Path, *args: str) -> None:
     """Ruft openspec im Repo auf (init und update arbeiten im Arbeitsordner)."""
-    exe = shutil.which("openspec")
-    if exe is None:
-        raise SetupError("openspec nicht gefunden")
-    lauf = subprocess.run([exe, *args], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=root)
+    lauf = proc.run("openspec", args, cwd=root)
     if lauf.returncode != 0:
         raise SetupError(f"openspec {' '.join(args)} ist fehlgeschlagen:\n{lauf.stdout}{lauf.stderr}".rstrip())
 
@@ -115,14 +115,15 @@ def plan(root: Path, agenten: list[str], ordner: dict[str, str], explizit: bool)
     """Schritte, die für die gewählten Agenten fehlen (Reihenfolge: Adapter, Ausschlüsse, Hooks, Wahl speichern)."""
     schritte: list[Step] = []
     werkzeuge = ",".join([BASE_TOOLS, *agenten])
-    fehlend = [] if (root / BASE_FOLDER).is_dir() else [BASE_TOOLS]
-    fehlend += [a for a in agenten if not (root / ordner[a]).is_dir()]
+    fehlend = [] if adapter_present(root, ".agents") else [BASE_TOOLS]
+    fehlend += [a for a in agenten if not adapter_present(root, ordner[a])]
     if fehlend:
         schritte.append(Step(f"openspec init --tools {werkzeuge} (fehlt: {', '.join(fehlend)})",
                              lambda: run_openspec(root, "init", "--tools", werkzeuge, "--no-animation")))
     else:
         neu, alt = installed_openspec(), generated_by(root)
-        if neu and alt and parse_version(neu) != parse_version(alt):
+        # nur ein neueres openspec frischt auf; ein älteres würde die Skills zurücksetzen, das tut kein Lauf von setup
+        if neu and alt and parse_version(neu) > parse_version(alt):
             schritte.append(Step(f"Adapter veraltet (openspec {neu}, Skills {alt}): openspec update",
                                  lambda: run_openspec(root, "update")))
     lokal = exclude_path(root)
@@ -135,9 +136,9 @@ def plan(root: Path, agenten: list[str], ordner: dict[str, str], explizit: bool)
         aktuell = git(root, "config", "--local", "--get", "core.hooksPath").stdout.strip()
         if aktuell != HOOKS_DIR:
             schritte.append(Step(f"core.hooksPath auf {HOOKS_DIR} setzen",
-                                 lambda: git(root, "config", "--local", "core.hooksPath", HOOKS_DIR)))
+                                 lambda: git_config_set(root, "core.hooksPath", HOOKS_DIR)))
     if explizit and stored_agents(root) != agenten:
         wert = " ".join(agenten)
         schritte.append(Step(f"Agentenwahl speichern (setup.agents = {wert})",
-                             lambda: git(root, "config", "--local", "setup.agents", wert)))
+                             lambda: git_config_set(root, "setup.agents", wert)))
     return schritte

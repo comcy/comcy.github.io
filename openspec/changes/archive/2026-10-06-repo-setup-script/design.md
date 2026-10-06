@@ -48,6 +48,11 @@ Neuer Job mit Matrix `ubuntu-latest`, `macos-latest`, `windows-latest`, der nur 
 **9. Fehler und Hinweise (Umsetzung).**
 Fehlendes Pflichtprogramm und unbekannter Agent sind Fehler und verhindern jede Änderung. Dinge, die ohne GitHub nicht prüfbar sind (keine Anmeldung, kein GitHub-Remote), sind ohne `--labels` nur ein Hinweis, mit `--labels` ein Fehler. Diese Regel kam aus einem manuellen Probelauf in einem Klon ohne GitHub-Remote.
 
+**10. Gemeinsamer Programmaufruf und Folgen des Reviews.**
+Alle Programmaufrufe laufen über `scripts/lib/proc.py` (Argumentliste, ohne Shell, Zeitlimit 60 Sekunden, einheitliche Kodierung, `SetupError` bei fehlendem Programm oder Zeitüberschreitung). Das Review vor dem Archivieren fand außerdem: fehlgeschlagenes `git config` wurde als erledigt gemeldet, ein bloßer `.claude/`-Ordner galt als Adapter, `setup agents` löschte die gespeicherte Wahl, ein älteres `openspec` löste ein Update aus, Labelnamen wurden groß- und kleinschreibungsabhängig verglichen, und `splitlines` trennte Dateien an Sonderzeichen. Alles ist behoben und per Test belegt.
+
+**Über die Spec hinaus geprüft** (bewusst, mit Tests): `enabled` nur `yes` oder `no`, leerer `trigger`, kein Übergang aus `terminal`, Mindestversion, Stufe und Aufruf in `tools.tsv`, Ordnerform in `agents.tsv`.
+
 ## Risks / Trade-offs
 
 - [Stubs bilden `gh` und `openspec` nur nach, wie sie dokumentiert sind] → Manueller Probelauf im PR mit den echten Programmen, Ausgabe als Beleg; Abweichungen werden zu neuen Testfällen.

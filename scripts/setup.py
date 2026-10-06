@@ -9,19 +9,24 @@ import pycheck  # liegt neben dieser Datei und läuft auch auf älterem Python
 pycheck.require_python()
 
 import argparse  # noqa: E402
-import shutil  # noqa: E402
 import sys  # noqa: E402
+from dataclasses import dataclass, field  # noqa: E402
 from pathlib import Path  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import labels  # noqa: E402
 import local  # noqa: E402
+import proc  # noqa: E402
 import tools  # noqa: E402
 import workflow  # noqa: E402
 
 
 def plural(n: int, eins: str, mehr: str) -> str:
     return f"{n} {eins if n == 1 else mehr}"
+
+
+def summary(fehler: int, warnungen: int, hinweise: int) -> None:
+    print(f"{fehler} Fehler, {plural(warnungen, 'Warnung', 'Warnungen')}, {plural(hinweise, 'Hinweis', 'Hinweise')}")
 
 
 def check_prerequisites(root: Path, funde: list[workflow.Finding]) -> tuple[int, int]:
@@ -36,15 +41,10 @@ def check_prerequisites(root: Path, funde: list[workflow.Finding]) -> tuple[int,
     return fehler, hinweise
 
 
-def summary(fehler: int, warnungen: int, hinweise: int) -> None:
-    print(f"{plural(fehler, 'Fehler', 'Fehler')}, {plural(warnungen, 'Warnung', 'Warnungen')}, "
-          f"{plural(hinweise, 'Hinweis', 'Hinweise')}")
-
-
 def resolve_agents(root: Path, gewuenscht: list[str], funde: list[workflow.Finding]) -> tuple[list[str], dict[str, str], bool]:
     """Agenten aus Argumenten, sonst aus der gespeicherten Wahl, sonst keine; unbekannte werden als Fehler gemeldet."""
     ordner = local.read_agents(root, funde)
-    explizit = bool(gewuenscht)
+    explizit = any(name != local.BASE_TOOLS for name in gewuenscht)  # "agents" allein ändert die gespeicherte Wahl nicht
     wahl = gewuenscht if explizit else local.stored_agents(root)
     agenten: list[str] = []
     for name in wahl:
@@ -56,6 +56,66 @@ def resolve_agents(root: Path, gewuenscht: list[str], funde: list[workflow.Findi
             continue
         agenten.append(name)
     return agenten, ordner, explizit
+
+
+@dataclass
+class LabelState:
+    """Was über die Labels bekannt ist: angemeldet, welche fehlen, und warum sie nicht prüfbar waren."""
+    angemeldet: bool
+    fehlende: list = field(default_factory=list)
+    hinweis: str | None = None
+
+    def not_checked(self) -> str | None:
+        """Meldung "Labels nicht geprüft: …" oder None, wenn die Labels geprüft wurden."""
+        if self.angemeldet and self.hinweis is None:
+            return None
+        return "HINWEIS Labels nicht geprüft: " + (self.hinweis or "gh nicht angemeldet (gh auth login)")
+
+
+def label_state(root: Path, mit_labels: bool, nur_pruefen: bool) -> LabelState:
+    if not labels.logged_in(root):
+        return LabelState(False)
+    try:
+        return LabelState(True, labels.missing_labels(root))
+    except proc.SetupError as problem:
+        if mit_labels and not nur_pruefen:
+            raise
+        # ohne --labels kein Fehler, zum Beispiel in einem Klon ohne GitHub-Remote
+        return LabelState(True, hinweis=str(problem))
+
+
+def report(schritte: list, state: LabelState, warnungen: int, hinweise: int) -> int:
+    """--check: fehlende Schritte und Labels melden, nichts ändern."""
+    for schritt in schritte:
+        print(f"FEHLT   {schritt.label}")
+    for label in state.fehlende:
+        print(f"FEHLT   Label {label.name} (anlegen mit setup --labels)")
+    if (meldung := state.not_checked()):
+        print(meldung)
+        hinweise += 1
+    summary(len(schritte) + len(state.fehlende), warnungen, hinweise)
+    return 1 if schritte or state.fehlende else 0
+
+
+def apply(root: Path, schritte: list, state: LabelState, mit_labels: bool) -> tuple[int, int]:
+    """Normaler Lauf: Schritte ausführen, Labels nur mit --labels anlegen; liefert (erledigt, neue Hinweise)."""
+    for schritt in schritte:
+        schritt.apply()
+        print(f"erledigt {schritt.label}")
+    erledigt, hinweise = len(schritte), 0
+    if mit_labels:
+        for label in state.fehlende:
+            labels.create_label(root, label)
+            print(f"erledigt Label {label.name} angelegt")
+            erledigt += 1
+    elif state.fehlende:
+        namen = ", ".join(label.name for label in state.fehlende)
+        print(f"HINWEIS {plural(len(state.fehlende), 'Label fehlt', 'Labels fehlen')} ({namen}): mit setup --labels anlegen")
+        hinweise = 1
+    elif (meldung := state.not_checked()):
+        print(meldung)
+        hinweise = 1
+    return erledigt, hinweise
 
 
 def run(root: Path, gewuenscht: list[str], nur_pruefen: bool, mit_labels: bool = False) -> int:
@@ -73,61 +133,28 @@ def run(root: Path, gewuenscht: list[str], nur_pruefen: bool, mit_labels: bool =
         summary(fehler, warnungen, hinweise)
         return 1
     try:
-        angemeldet = labels.logged_in(root) if shutil.which("gh") else False
-        if mit_labels and not nur_pruefen and not angemeldet:
-            print("FEHLER  gh ist nicht angemeldet: gh auth login")
-            summary(1, warnungen, hinweise)
-            return 1
+        state = label_state(root, mit_labels, nur_pruefen)
+        if mit_labels and not nur_pruefen and not state.angemeldet:
+            raise proc.SetupError("gh ist nicht angemeldet: gh auth login")  # vor jeder Änderung
         schritte = local.plan(root, agenten, ordner, explizit)
-        fehlende, label_hinweis = [], None
-        if angemeldet:
-            try:
-                fehlende = labels.missing_labels(root)
-            except local.SetupError as problem:
-                if mit_labels and not nur_pruefen:
-                    raise
-                label_hinweis = str(problem)  # ohne --labels kein Fehler, zum Beispiel ein Klon ohne GitHub-Remote
         if nur_pruefen:
-            for schritt in schritte:
-                print(f"FEHLT   {schritt.label}")
-            for label in fehlende:
-                print(f"FEHLT   Label {label.name} (anlegen mit setup --labels)")
-            if not angemeldet or label_hinweis:
-                print("HINWEIS Labels nicht geprüft: " + (label_hinweis or "gh nicht angemeldet (gh auth login)"))
-                hinweise += 1
-            summary(len(schritte) + len(fehlende), warnungen, hinweise)
-            return 1 if schritte or fehlende else 0
-        for schritt in schritte:
-            schritt.apply()
-            print(f"erledigt {schritt.label}")
-        if mit_labels:
-            for label in fehlende:
-                labels.create_label(root, label)
-                print(f"erledigt Label {label.name} angelegt")
-            schritte = schritte + [None] * len(fehlende)  # zählt für "nichts zu tun"
-        elif fehlende:
-            print(f"HINWEIS {plural(len(fehlende), 'Label fehlt', 'Labels fehlen')} "
-                  f"({', '.join(l.name for l in fehlende)}): mit setup --labels anlegen")
-            hinweise += 1
-        elif not angemeldet or label_hinweis:
-            print("HINWEIS Labels nicht geprüft: " + (label_hinweis or "gh nicht angemeldet (gh auth login)"))
-            hinweise += 1
-    except local.SetupError as fehlermeldung:
+            return report(schritte, state, warnungen, hinweise)
+        erledigt, neue = apply(root, schritte, state, mit_labels)
+    except proc.SetupError as fehlermeldung:
         print(f"FEHLER  {fehlermeldung}")
         summary(1, warnungen, hinweise)
         return 1
-    if not schritte:
+    if not erledigt:
         print("nichts zu tun")
     if not gewuenscht and not agenten:
         print("Hinweis: kein Agent gewählt, eingerichtet ist nur die agentenneutrale Basis (agents). "
               "Für deinen Agenten: setup claude (zum Beispiel python3 scripts/setup.py claude)")
-    summary(0, warnungen, hinweise)
+    summary(0, warnungen, hinweise + neue)
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
-    # Ausgabe immer als UTF-8, damit sie unter Windows (Umleitung, CI) nicht von der Konsolenkodierung abhängt
-    sys.stdout.reconfigure(encoding="utf-8")
+    proc.utf8_output()
     parser = argparse.ArgumentParser(prog="setup", description="Lokalen Klon für den Prozess einrichten")
     parser.add_argument("agents", nargs="*", help="Agenten für den lokalen Adapter, zum Beispiel claude")
     parser.add_argument("--check", action="store_true", help="nur melden, was fehlt, nichts ändern")
