@@ -144,4 +144,26 @@ DRAFTS=0 build; a=$(timeline_html | grep -c 'class="tl-item"'); DRAFTS=1 build; 
 if [ "$a" = 1 ] && [ "$b" = 2 ]; then ok "Bookmark-Entwurf nur mit DRAFTS=1"; else no "Bookmark-Entwurf nur mit DRAFTS=1 (ohne: $a, mit: $b)"; fi
 if timeline_html | grep -q 'Tom &amp; Jerry &lt;3' && timeline_html | grep -q 'Eins &amp; zwei &lt;drei'; then ok "Sonderzeichen im Bookmark escaped"; else no "Sonderzeichen im Bookmark escaped"; fi
 
+# 15. /timeline/ zeigt alle Einträge in der Reihenfolge der Startseite, ohne Container
+fresh voll
+for i in 01 02 03 04 05 06 07 08 09 10 11 12; do post "2026-02-$i-p$i" "Beitrag $i"; done
+build
+full() { cat "$W/public/timeline/index.html" 2>/dev/null; }
+n=$(full | grep -c 'class="tl-item"')
+home=$(timeline_html | grep -o 'blog/p[0-9]*/' | tr '\n' ' '); all=$(full | grep -o 'blog/p[0-9]*/' | tr '\n' ' ')
+case $all in "$home"*) pre=ja ;; *) pre=nein ;; esac
+if [ "$n" = 12 ] && [ "$pre" = ja ] && ! full | grep -q 'timeline-scroll'; then ok "/timeline/ zeigt alle 12 in Reihenfolge, ohne Container"; else no "/timeline/ zeigt alle 12 in Reihenfolge, ohne Container (Einträge: $n, Präfix: $pre)"; fi
+
+# 16. "Alles ansehen" nur bei mehr als 8 Einträgen; ohne Einträge keine /timeline/-Seite
+link() { timeline_html | grep -c 'href="/timeline/"[^>]*>Alles ansehen'; }
+for n in 0 8 9; do
+  fresh "grenze-$n"; i=0; while [ "$i" -lt "$n" ]; do i=$((i+1)); post "2026-04-$(printf '%02d' "$i")-g$i" "G $i"; done
+  build; l=$(link); [ -f "$W/public/timeline/index.html" ] && seite=ja || seite=nein
+  case $n in
+    0) [ "$seite" = nein ] && ok "ohne Einträge keine /timeline/-Seite" || no "ohne Einträge keine /timeline/-Seite" ;;
+    8) [ "$l" = 0 ] && ok "8 Einträge: kein Link Alles ansehen" || no "8 Einträge: kein Link Alles ansehen" ;;
+    9) [ "$l" = 1 ] && ok "9 Einträge: Link Alles ansehen" || no "9 Einträge: Link Alles ansehen (Treffer: $l)" ;;
+  esac
+done
+
 exit $FAIL

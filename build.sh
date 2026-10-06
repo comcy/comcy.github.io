@@ -129,10 +129,23 @@ render "$TMP/blog.md" "$OUT/blog/index.html" -M pagetitle=Blog
   if [ -s "$TMP/tl.sorted" ]; then
     printf '\n```{=html}\n<aside class="timeline" aria-label="Timeline">\n<h2>Timeline</h2>\n<div class="timeline-scroll">\n<ol class="timeline-list">\n'
     head -n 8 "$TMP/tl.sorted" | while IFS=$US read -r key date end kind slug title desc; do timeline_item; done
-    printf '</ol>\n</div>\n</aside>\n```\n'
+    printf '</ol>\n</div>\n'
+    # ab dem 9. Eintrag führt ein Link auf die vollständige Seite
+    [ "$(wc -l < "$TMP/tl.sorted")" -gt 8 ] && printf '<p class="timeline-more"><a href="%s/timeline/">Alles ansehen →</a></p>\n' "$BASE"
+    printf '</aside>\n```\n'
   fi
 } > "$TMP/home.md"
 render "$TMP/home.md" "$OUT/index.html" -M home=true -M pagetitle=Start --metadata description="$SITE_DESCRIPTION"
+
+# --- Timeline-Seite: alle Einträge, ohne Container (entfällt ohne Einträge) ---------------------------
+if [ -s "$TMP/tl.sorted" ]; then
+  {
+    printf -- '---\ntitle: Timeline\n---\n\n```{=html}\n<section class="timeline timeline-full">\n<ol class="timeline-list">\n'
+    while IFS=$US read -r key date end kind slug title desc; do timeline_item; done < "$TMP/tl.sorted"
+    printf '</ol>\n</section>\n```\n'
+  } > "$TMP/timeline.md"
+  render "$TMP/timeline.md" "$OUT/timeline/index.html" -M pagetitle=Timeline
+fi
 
 # --- Themen (Tags) ------------------------------------------------------------
 cut -d "$US" -f4 "$TMP/sorted" | tr ' ' '\n' | sed '/^$/d' | sort -u > "$TMP/tags"
