@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from stubs import Stubs
+from support import MitRepo, skill_datei
 
 REPO = Path(__file__).resolve().parent.parent
 SETUP = REPO / "scripts" / "setup.py"
@@ -24,42 +24,23 @@ TOOLS = (
     "pandoc\t3.1\trequired\tpandoc --version\tPaketmanager\n"
     "kvasir\t-\trecommended\tkvasir --version\tsiehe kvasir-Repo\n"
 )
-ALLE = {"git": "git version 2.45.1", "gh": "gh version 2.50.0 (2026-01-01)", "node": "v22.4.0",
-        "openspec": "1.14.0", "pandoc": "pandoc 3.1.3", "kvasir": "kvasir 0.3.0"}
 
 
-class MitRepo(unittest.TestCase):
-    """Temporäres Git-Repo mit Daten (workflow/, scripts/setup.d/tools.tsv) und Stub-Programmen."""
+class Basis(MitRepo):
+    """Wie MitRepo, mit eigener tools.tsv (feste Mindestversionen) und --check als Standardaufruf."""
 
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmp.cleanup)
-        tmp = Path(self._tmp.name)
-        self.repo = tmp / "repo"
-        self.repo.mkdir()
-        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
-        shutil.copytree(REPO / "workflow", self.repo / "workflow")
-        (self.repo / "scripts" / "setup.d").mkdir(parents=True)
+        super().setUp()
         self.set_tools(TOOLS)
-        self.stubs = Stubs(tmp)
-        for name, version in ALLE.items():
-            self.stubs.add(name, version)
-
-    def set_tools(self, text):
-        (self.repo / "scripts" / "setup.d" / "tools.tsv").write_bytes(text.encode("utf-8"))
+        (self.repo / ".agents" / "skills" / "openspec-propose").mkdir(parents=True)
+        (self.repo / ".agents" / "skills" / "openspec-propose" / "SKILL.md").write_text(skill_datei("1.14.0")[
+            ".agents/skills/openspec-propose/SKILL.md"], encoding="utf-8")
 
     def check(self, *extra):
-        return subprocess.run([sys.executable, str(SETUP), "--check", "--root", str(self.repo), *extra],
-                              capture_output=True, text=True, encoding="utf-8", env=self.stubs.env())
-
-    def zustand(self):
-        config = subprocess.run(["git", "-C", str(self.repo), "config", "--local", "--list"],
-                                capture_output=True, text=True).stdout
-        exclude = self.repo / ".git" / "info" / "exclude"
-        return config, exclude.read_text(encoding="utf-8") if exclude.exists() else None
+        return self.run_setup("--check", *extra)
 
 
-class Voraussetzungen(MitRepo):
+class Voraussetzungen(Basis):
     def test_alles_da_und_neu_genug(self):
         r = self.check()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
@@ -97,7 +78,7 @@ class Voraussetzungen(MitRepo):
         self.assertIn("1 Hinweis", r.stdout)
 
     def test_ohne_mindestversion_genuegt_vorhandensein(self):
-        self.stubs.add("git", "irgendwas ohne Versionsnummer")
+        self.stubs.add("gh", "irgendwas ohne Versionsnummer")
         r = self.check()
         self.assertEqual(r.returncode, 0, r.stdout)
 
@@ -113,7 +94,7 @@ class Voraussetzungen(MitRepo):
         self.assertEqual(self.check().returncode, 0)
 
 
-class OhneAenderung(MitRepo):
+class OhneAenderung(Basis):
     def test_check_aendert_nichts_und_ruft_nur_die_versionen_auf(self):
         vorher = self.zustand()
         r = self.check()
@@ -130,7 +111,7 @@ class OhneAenderung(MitRepo):
         self.assertEqual(vorher, nachher)
 
 
-class Daten(MitRepo):
+class Daten(Basis):
     def test_ungueltige_prozessdaten_machen_check_rot_mit_denselben_meldungen(self):
         pfad = self.repo / "workflow" / "states.tsv"
         pfad.write_text(pfad.read_text(encoding="utf-8").replace("fbca04", "zzzzzz"), encoding="utf-8", newline="\n")
@@ -156,12 +137,6 @@ class Daten(MitRepo):
         r = self.check()
         self.assertEqual(r.returncode, 1)
         self.assertIn("scripts/setup.d/tools.tsv", r.stdout)
-
-
-class Aufruf(unittest.TestCase):
-    def test_ohne_check_ist_noch_nicht_umgesetzt(self):
-        r = subprocess.run([sys.executable, str(SETUP), "--root", str(REPO)], capture_output=True, text=True, encoding="utf-8")
-        self.assertNotEqual(r.returncode, 0)
 
 
 if __name__ == "__main__":

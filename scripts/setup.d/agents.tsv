@@ -1,0 +1,5 @@
+# Agenten, für die setup einen lokalen Adapter einrichten kann (openspec init --tools agents,<agent>).
+# folder: Ordner der erzeugten Adapterdateien im Repo, wird in .git/info/exclude eingetragen (nicht eingecheckt).
+# Weitere Agenten erst eintragen, wenn der Ordner geprüft ist.
+agent	folder
+claude	.claude/
