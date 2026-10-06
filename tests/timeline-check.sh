@@ -34,6 +34,12 @@ bm() {
 }
 # build: baut in $W, Ausgabe in $W/out.log und $W/err.log, gibt den Exit-Code zurück
 build() { (cd "$W" && SITE_URL=http://localhost DRAFTS="${DRAFTS:-0}" sh build.sh >out.log 2>err.log); }
+# must_build: Build muss gelingen, sonst ein eigener Fehlerfall mit dem Log (statt eines indirekten Folgefehlers)
+must_build() { build || { no "Build schlägt fehl in $W: $(tail -n 2 "$W/err.log" | tr '\n' ' ')"; return 1; }; }
+# build_with VAR=wert: Build mit gesetzter Umgebungsvariable, nur in einer Unter-Shell (Präfix vor einer Funktion ist in POSIX nicht eindeutig)
+build_with() { ( export "$1"; must_build ); }
+# TL_MAX: Einträge auf der Startseite, aus build.sh gelesen (eine Quelle)
+TL_MAX=$(sed -n 's/^TL_MAX=\([0-9][0-9]*\).*/\1/p' "$ROOT/build.sh")
 # timeline_html: nur der Timeline-Abschnitt der Startseite
 timeline_html() { awk '/<aside class="timeline"/,/<\/aside>/' "$W/public/index.html"; }
 
@@ -42,21 +48,27 @@ fresh basis
 post 2026-01-01-eins "Eins"; post 2026-01-02-zwei "Zwei"; post 2026-01-03-drei "Drei"
 if build && [ "$(timeline_html | grep -c 'class="tl-item"')" = 3 ]; then ok "Startseite zeigt 3 Beiträge in der Timeline"; else no "Startseite zeigt 3 Beiträge in der Timeline"; fi
 
-# 2. Es erscheinen höchstens die 8 neuesten, neueste zuerst
+# TL_MAX muss lesbar sein und kleiner als die 12 Fixture-Beiträge
+if [ -n "$TL_MAX" ] && [ "$TL_MAX" -lt 12 ]; then ok "TL_MAX=$TL_MAX aus build.sh gelesen"; else no "TL_MAX aus build.sh lesbar und kleiner als 12 (war: '$TL_MAX')"; exit 1; fi
+
+# 2. Es erscheinen höchstens die TL_MAX neuesten, neueste zuerst
 fresh viele
 for i in 01 02 03 04 05 06 07 08 09 10 11 12; do post "2026-02-$i-p$i" "Beitrag $i"; done
-build
+must_build
 got=$(timeline_html | grep -o 'blog/p[0-9]*/' | tr -d '/' | sed 's|blog||' | tr '\n' ' ')
-if [ "$got" = "p12 p11 p10 p09 p08 p07 p06 p05 " ]; then ok "8 neueste, neueste zuerst"; else no "8 neueste, neueste zuerst (war: $got)"; fi
+want=; i=12; while [ "$i" -gt $((12 - TL_MAX)) ]; do want="$want$(printf 'p%02d ' "$i")"; i=$((i-1)); done
+if [ "$got" = "$want" ]; then ok "$TL_MAX neueste, neueste zuerst"; else no "$TL_MAX neueste, neueste zuerst (war: $got, erwartet: $want)"; fi
 
 # 3. Gleiches Datum: Reihenfolge ist unabhängig von der Locale gleich
 fresh gleich
 post 2026-03-01-a-b "Erster"; post 2026-03-01-ab "Zweiter"; post 2026-03-01-Ab "Dritter"
-LC_ALL=C build; c=$(timeline_html | grep -o 'blog/[A-Za-z-]*/' | tr '\n' ' ')
+build_with LC_ALL=C; c=$(timeline_html | grep -o 'blog/[A-Za-z-]*/' | tr '\n' ' ')
 for loc in en_US.UTF-8 de_DE.UTF-8; do
   if locale -a | grep -qi "^$(printf '%s' "$loc" | sed 's/UTF-8/utf8/')$"; then
-    LC_ALL=$loc build; l=$(timeline_html | grep -o 'blog/[A-Za-z-]*/' | tr '\n' ' ')
+    build_with LC_ALL=$loc; l=$(timeline_html | grep -o 'blog/[A-Za-z-]*/' | tr '\n' ' ')
     if [ "$c" = "$l" ]; then ok "gleiches Datum, Locale $loc wie C"; else no "gleiches Datum, Locale $loc weicht ab ($l statt $c)"; fi
+  else
+    echo "übersprungen: gleiches Datum, Locale $loc nicht installiert"
   fi
 done
 if [ "$c" = "blog/ab/ blog/a-b/ blog/Ab/ " ]; then ok "gleiches Datum: feste Reihenfolge (absteigend nach Slug, C-Sortierung)"; else no "gleiches Datum: feste Reihenfolge (war: $c)"; fi
@@ -75,8 +87,8 @@ done
 # 5. Entwürfe erscheinen nur mit DRAFTS=1
 fresh entwurf
 post 2026-05-01-fertig "Fertig"; post 2026-05-02-skizze "Skizze" draft
-DRAFTS=0 build; n0=$(timeline_html | grep -c 'class="tl-item"')
-DRAFTS=1 build; n1=$(timeline_html | grep -c 'class="tl-item"')
+build_with DRAFTS=0; n0=$(timeline_html | grep -c 'class="tl-item"')
+build_with DRAFTS=1; n1=$(timeline_html | grep -c 'class="tl-item"')
 if [ "$n0" = 1 ] && [ "$n1" = 2 ]; then ok "Entwurf nur mit DRAFTS=1 (1 ohne, 2 mit)"; else no "Entwurf nur mit DRAFTS=1 (ohne: $n0, mit: $n1)"; fi
 
 # 6. Ohne Einträge gibt es keine Timeline und keine leere Fläche
@@ -87,13 +99,13 @@ if build && ! grep -q 'class="timeline"' "$W/public/index.html"; then ok "ohne B
 fresh sonder
 # pandoc entfernt rohes HTML im Titel, daher ein maskiertes <
 post 2026-06-01-sonder "Tom & Jerry \\<3"
-build
+must_build
 if timeline_html | grep -q 'Tom &amp; Jerry &lt;3'; then ok "Sonderzeichen im Titel escaped"; else no "Sonderzeichen im Titel escaped"; fi
 
 # 8. Ein Bookmark aus timeline/ erscheint in der Timeline, ohne eigene Seite
 fresh bookmark
 post 2026-07-01-eins "Ein Beitrag"; bm 2024-05-vortrag "Vortrag zu Scrum" 2024-05 "" "Ein Satz zum Vortrag."
-build
+must_build
 if timeline_html | grep -q 'Vortrag zu Scrum' && [ "$(timeline_html | grep -c 'class="tl-item"')" = 2 ] && [ -z "$(find "$W/public" -path '*vortrag*' 2>/dev/null)" ]; then ok "Bookmark erscheint ohne eigene Seite"; else no "Bookmark erscheint ohne eigene Seite"; fi
 
 # 9. Ein Bookmark ist aufklappbar: Titel in <summary>, Beschreibung im aufgeklappten Teil
@@ -103,14 +115,14 @@ if printf '%s' "$h" | grep -q '<details><summary>[^<]*<time[^>]*>2024-05</time> 
 # 10. Reihenfolge nach normalisiertem Datum: fehlender Monat/Tag zählt als der erste
 fresh mix
 post 2026-10-03-beitrag "Beitrag 3. Oktober"; bm a-okt "Bookmark Oktober" 2026-10; bm b-jahr "Bookmark Jahr" 2026; post 2026-01-01-neujahr "Beitrag Neujahr"
-build
+must_build
 got=$(timeline_html | grep -o '\(Beitrag 3. Oktober\|Bookmark Oktober\|Beitrag Neujahr\|Bookmark Jahr\)' | tr '\n' '|')
 if [ "$got" = "Beitrag 3. Oktober|Bookmark Oktober|Beitrag Neujahr|Bookmark Jahr|" ]; then ok "Reihenfolge nach normalisiertem Datum"; else no "Reihenfolge nach normalisiertem Datum (war: $got)"; fi
 
 # 11. Zeitraum: end wird als Zeitraum gezeigt, now als laufend, die Position bleibt durch date bestimmt
 fresh zeitraum
 post 2026-01-01-neu "Neuer Beitrag"; bm a-fest "Mit Ende" 2024-05 2024-11 "Text."; bm b-lauf "Laufend" 2023 now "Text."; bm c-spaet "Ende nach Beitrag" 2025-01 2027-12 "Text."
-build; h=$(timeline_html | tr '\n' ' ')
+must_build; h=$(timeline_html | tr '\n' ' ')
 if printf '%s' "$h" | grep -q '2024-05 – 2024-11' && printf '%s' "$h" | grep -q '2023 – laufend'; then ok "Zeitraum und laufend werden angezeigt"; else no "Zeitraum und laufend werden angezeigt"; fi
 got=$(timeline_html | grep -o '\(Neuer Beitrag\|Mit Ende\|Laufend\|Ende nach Beitrag\)' | tr '\n' '|')
 if [ "$got" = "Neuer Beitrag|Ende nach Beitrag|Mit Ende|Laufend|" ]; then ok "Position bleibt durch date bestimmt"; else no "Position bleibt durch date bestimmt (war: $got)"; fi
@@ -133,43 +145,45 @@ fresh seiten
 printf -- '---\ntitle: Neue Seite\ndate: 2026-08-01\n---\n\nText.\n' > "$W/pages/neu.md"
 printf -- '---\ntitle: Startseite\ndate: 2026-09-01\n---\n\nText.\n' > "$W/pages/index.md"
 printf -- '---\ntitle: Galerie\ndate: 2026-09-02\n---\n\nText.\n' > "$W/pages/gallery.md"
-build; h=$(timeline_html | tr '\n' ' ')
+must_build; h=$(timeline_html | tr '\n' ' ')
 if printf '%s' "$h" | grep -q '<a href="/neu/">Neue Seite</a>' && ! printf '%s' "$h" | grep -q 'Über mich\|Startseite\|Galerie'; then ok "Seite mit Datum erscheint, ohne Datum nicht, index und gallery nie"; else no "Seite mit Datum erscheint, ohne Datum nicht, index und gallery nie (war: $h)"; fi
 
 # 14. Bookmark-Entwürfe nur mit DRAFTS=1, Sonderzeichen in Titel und Beschreibung werden escaped
 fresh bm-extra
 bm skizze "Skizze" 2025-01 "" "Noch nicht fertig." draft
 bm tom "Tom & Jerry \\<3" 2025-02 "" "Eins & zwei \\<drei"
-DRAFTS=0 build; a=$(timeline_html | grep -c 'class="tl-item"'); DRAFTS=1 build; b=$(timeline_html | grep -c 'class="tl-item"')
+build_with DRAFTS=0; a=$(timeline_html | grep -c 'class="tl-item"'); build_with DRAFTS=1; b=$(timeline_html | grep -c 'class="tl-item"')
 if [ "$a" = 1 ] && [ "$b" = 2 ]; then ok "Bookmark-Entwurf nur mit DRAFTS=1"; else no "Bookmark-Entwurf nur mit DRAFTS=1 (ohne: $a, mit: $b)"; fi
 if timeline_html | grep -q 'Tom &amp; Jerry &lt;3' && timeline_html | grep -q 'Eins &amp; zwei &lt;drei'; then ok "Sonderzeichen im Bookmark escaped"; else no "Sonderzeichen im Bookmark escaped"; fi
 
 # 15. /timeline/ zeigt alle Einträge in der Reihenfolge der Startseite, ohne Container
 fresh voll
 for i in 01 02 03 04 05 06 07 08 09 10 11 12; do post "2026-02-$i-p$i" "Beitrag $i"; done
-build
+must_build
 full() { cat "$W/public/timeline/index.html" 2>/dev/null; }
 n=$(full | grep -c 'class="tl-item"')
 home=$(timeline_html | grep -o 'blog/p[0-9]*/' | tr '\n' ' '); all=$(full | grep -o 'blog/p[0-9]*/' | tr '\n' ' ')
 case $all in "$home"*) pre=ja ;; *) pre=nein ;; esac
 if [ "$n" = 12 ] && [ "$pre" = ja ] && ! full | grep -q 'timeline-scroll'; then ok "/timeline/ zeigt alle 12 in Reihenfolge, ohne Container"; else no "/timeline/ zeigt alle 12 in Reihenfolge, ohne Container (Einträge: $n, Präfix: $pre)"; fi
 
-# 16. "Alles ansehen" nur bei mehr als 8 Einträgen; ohne Einträge keine /timeline/-Seite
+# 16. "Alles ansehen" nur bei mehr als TL_MAX Einträgen; ohne Einträge keine /timeline/-Seite
 link() { timeline_html | grep -c 'href="/timeline/"[^>]*>Alles ansehen'; }
-for n in 0 8 9; do
+for n in 0 "$TL_MAX" $((TL_MAX + 1)); do
   fresh "grenze-$n"; i=0; while [ "$i" -lt "$n" ]; do i=$((i+1)); post "2026-04-$(printf '%02d' "$i")-g$i" "G $i"; done
-  build; l=$(link); [ -f "$W/public/timeline/index.html" ] && seite=ja || seite=nein
-  case $n in
-    0) [ "$seite" = nein ] && ok "ohne Einträge keine /timeline/-Seite" || no "ohne Einträge keine /timeline/-Seite" ;;
-    8) [ "$l" = 0 ] && ok "8 Einträge: kein Link Alles ansehen" || no "8 Einträge: kein Link Alles ansehen" ;;
-    9) [ "$l" = 1 ] && ok "9 Einträge: Link Alles ansehen" || no "9 Einträge: Link Alles ansehen (Treffer: $l)" ;;
-  esac
+  must_build; l=$(link); [ -f "$W/public/timeline/index.html" ] && seite=ja || seite=nein
+  if [ "$n" = 0 ]; then
+    [ "$seite" = nein ] && ok "ohne Einträge keine /timeline/-Seite" || no "ohne Einträge keine /timeline/-Seite"
+  elif [ "$n" = "$TL_MAX" ]; then
+    [ "$l" = 0 ] && ok "$n Einträge: kein Link Alles ansehen" || no "$n Einträge: kein Link Alles ansehen"
+  else
+    [ "$l" = 1 ] && ok "$n Einträge: Link Alles ansehen" || no "$n Einträge: Link Alles ansehen (Treffer: $l)"
+  fi
 done
 
 # 17. Ohne Einträge keine leere Spalte: die Startseite bekommt die Klasse home nur mit Timeline
-fresh leer-layout; build
+fresh leer-layout; must_build
 if ! grep -q 'class="home"' "$W/public/index.html"; then ok "ohne Einträge keine Klasse home (kein leeres Grid)"; else no "ohne Einträge keine Klasse home (kein leeres Grid)"; fi
-fresh voll-layout; post 2026-01-01-eins "Eins"; build
+fresh voll-layout; post 2026-01-01-eins "Eins"; must_build
 if grep -q '<body class="home">' "$W/public/index.html" && grep -q '<main class="home">' "$W/public/index.html"; then ok "mit Einträgen Klasse home an body und main"; else no "mit Einträgen Klasse home an body und main"; fi
 
 # 18. Ende gleich Start (normalisiert) ist erlaubt, nur ein Ende davor bricht ab
@@ -183,26 +197,26 @@ if build; then no "Ende 2024-05 vor Start 2024-05-10 bricht ab"; else ok "Ende 2
 # 19. Gleiches normalisiertes Datum: Reihenfolge nach Art und Slug, nicht nach der Länge der Schreibweise
 fresh gleichstand
 post 2026-10-01-beitrag "Beitrag"; bm a-bm "Bookmark A" 2026-10-01 "" "Text."; bm z-bm "Bookmark Z" 2026-10 "" "Text."
-build
+must_build
 got=$(timeline_html | grep -o '\(>Beitrag<\|Bookmark A\|Bookmark Z\)' | tr -d '<>' | tr '\n' '|')
 if [ "$got" = "Beitrag|Bookmark Z|Bookmark A|" ]; then ok "Gleichstand nach Art und Slug"; else no "Gleichstand nach Art und Slug (war: $got)"; fi
 
 # 20. Beiträge mit Monat oder Jahr werden so angezeigt, wie geschrieben
 fresh anzeige
 postd 2026-03-monat "Monatsbeitrag" 2026-03; postd 2026-01-jahr "Jahresbeitrag" 2026
-build; h=$(timeline_html | tr '\n' ' ')
+must_build; h=$(timeline_html | tr '\n' ' ')
 if printf '%s' "$h" | grep -q '<time datetime="2026-03">2026-03</time>' && printf '%s' "$h" | grep -q '<time datetime="2026">2026</time>'; then ok "Beiträge mit Monat und Jahr wie geschrieben"; else no "Beiträge mit Monat und Jahr wie geschrieben"; fi
 
 # 21. Der Zeitraum steht im aufgeklappten Teil, nicht in der Titelzeile
 fresh bereich
 bm zeit "Mit Zeitraum" 2024-05 2024-11 "Text."
-build; h=$(timeline_html | tr '\n' ' ')
+must_build; h=$(timeline_html | tr '\n' ' ')
 if printf '%s' "$h" | grep -q '</summary><p>Text.</p><p class="tl-range">2024-05 – 2024-11</p></details>' && ! printf '%s' "$h" | grep -q '<summary>[^<]*<time[^>]*>[^<]*</time>[^<]*2024-11'; then ok "Zeitraum im aufgeklappten Teil"; else no "Zeitraum im aufgeklappten Teil"; fi
 
 # 22. Jede Seite mit Datum hat den Pfad /<slug>/
 fresh seiten2
 for n in eins zwei; do printf -- '---\ntitle: Seite %s\ndate: 2026-08-0%s\n---\n\nText.\n' "$n" "$([ $n = eins ] && echo 1 || echo 2)" > "$W/pages/$n.md"; done
-build; h=$(timeline_html | tr '\n' ' ')
+must_build; h=$(timeline_html | tr '\n' ' ')
 if printf '%s' "$h" | grep -q 'href="/eins/">Seite eins' && printf '%s' "$h" | grep -q 'href="/zwei/">Seite zwei'; then ok "Seiten mit Datum verlinken auf /<slug>/"; else no "Seiten mit Datum verlinken auf /<slug>/"; fi
 
 # 23. Das Bookmark-Beispiel aus dem README baut wie beschrieben und zeigt den Zeitraum

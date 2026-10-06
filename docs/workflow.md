@@ -105,7 +105,7 @@ Haken an den generischen Phasen. Nur persönlich, nicht Teil des generischen Abl
 
 ## Teststrategie
 
-- **Szenario heißt Testfall:** Jedes Szenario einer OpenSpec-Spec ist ein Testfall. Die Shell-Tests unter `tests/<spec>-check.sh` sind die ausführbare Form des Verhaltens und bleiben im Repo.
+- **Szenario heißt Testfall:** Jedes Szenario einer OpenSpec-Spec ist ein Testfall. Die Shell-Tests unter `tests/<fähigkeit>-check.sh` sind die ausführbare Form des Verhaltens und bleiben im Repo. `<fähigkeit>` ist der Name der Fähigkeit (z. B. `timeline`), nicht der Name des Changes (`timeline-startseite`).
 - **Teststelle ist der Build-Aufruf:** `sh build.sh` in einem temporären Klon mit eigenen Fixtures, geprüft wird `public/` und der Fehlercode (Black-Box, keine internen Funktionen). Vor dem ersten Test werden die Teststellen bestätigt (`/tdd`).
 - **Layout per Screenshot:** Optik ist im Build-Output nicht sinnvoll prüfbar. Screenshots dienen als Beleg am PR (Branch `pr-screenshots`) und sind nicht persistent.
 - **Wo es läuft:** lokal mit `sh tests/run.sh`, in der CI auf jedem Pull Request und vor dem Veröffentlichen. Ein verbindlicher Branch-Schutz ("Status check erforderlich") ist eine GitHub-Einstellung und bewusst noch nicht gesetzt.
