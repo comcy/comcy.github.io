@@ -40,10 +40,21 @@ check_date() {
     { echo "Ungültiges Datum '$1' in $2" >&2; exit 1; }
 }
 
-# Timeline-Eintrag für einen Post (liest Felder aus $date $slug $title)
+# Timeline-Eintrag (liest Felder aus $date $end $kind $slug $title $desc): Beitrag mit Link, Bookmark ohne Seite
 timeline_item() {
-  printf '<li class="tl-item"><time datetime="%s">%s</time> <a href="%s/blog/%s/">%s</a></li>\n' \
-    "$date" "$date" "$BASE" "$slug" "$(xml_escape "$title")"
+  case $kind in
+    page) printf '<li class="tl-item"><time datetime="%s">%s</time> <a href="%s/%s/">%s</a></li>\n' \
+            "$date" "$date" "$BASE" "$slug" "$(xml_escape "$title")" ;;
+    post) printf '<li class="tl-item"><time datetime="%s">%s</time> <a href="%s/blog/%s/">%s</a></li>\n' \
+            "$date" "$date" "$BASE" "$slug" "$(xml_escape "$title")" ;;
+    *) range=
+       if [ -n "$end" ]; then
+         [ "$end" = now ] && endtxt=laufend || endtxt=$end
+         range=$(printf '<p class="tl-range">%s – %s</p>' "$date" "$endtxt")
+       fi
+       printf '<li class="tl-item" data-kind="bookmark"><details><summary><time datetime="%s">%s</time> %s</summary><p>%s</p>%s</details></li>\n' \
+         "$date" "$date" "$(xml_escape "$title")" "$(xml_escape "$desc")" "$range" ;;
+  esac
 }
 
 # Listeneintrag für einen Post (liest Felder aus $date $slug $title $desc)
@@ -75,6 +86,32 @@ for f in posts/*.md; do
 done
 LC_ALL=C sort -r "$TMP/index" > "$TMP/sorted"
 
+# --- Timeline-Index: Beiträge und Bookmarks (key, datum, ende, art, slug, titel, beschreibung) ----------
+: > "$TMP/tl"
+while IFS=$US read -r date slug title tags desc; do
+  printf '%s\037%s\037\037post\037%s\037%s\037%s\n' "$date" "$date" "$slug" "$title" "$desc" >> "$TMP/tl"
+done < "$TMP/sorted"
+# Seiten mit date: (außer Startseite und Galerie) und Bookmarks aus timeline/; Entwürfe wie im Blog
+for f in pages/*.md timeline/*.md; do
+  [ -e "$f" ] || continue
+  slug=$(basename "$f" .md); kind=bookmark
+  case $f in pages/*) kind=page; case $slug in index|gallery) continue ;; esac ;; esac
+  meta=$(pandoc "$f" --to plain --wrap=none --template templates/timeline-meta.txt)
+  date=$(printf '%s' "$meta" | cut -f1); end=$(printf '%s' "$meta" | cut -f2)
+  title=$(printf '%s' "$meta" | cut -f3); desc=$(printf '%s' "$meta" | cut -f4)
+  [ "$kind" = page ] && [ -z "$date" ] && continue
+  [ "$(printf '%s' "$meta" | cut -f5)" = draft ] && [ "${DRAFTS:-0}" != 1 ] && continue
+  check_date "$date" "$f"
+  [ -n "$title" ] || { echo "Titel fehlt in $f" >&2; exit 1; }
+  if [ -n "$end" ] && [ "$end" != now ]; then
+    check_date "$end" "$f"
+    # ponytail: die drei Formate sind Präfixe voneinander, daher genügt der Zeichenvergleich (fehlender Teil = Anfang)
+    awk -v a="$end" -v b="$date" 'BEGIN { exit !(a < b) }' && { echo "Ende vor Start in $f" >&2; exit 1; }
+  fi
+  printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\n' "$date" "$date" "$end" "$kind" "$slug" "$title" "$desc" >> "$TMP/tl"
+done
+LC_ALL=C sort -r "$TMP/tl" > "$TMP/tl.sorted"
+
 # --- Blog-Übersicht und Startseite ----------------------------------------------
 {
   printf -- '---\ntitle: Blog\n---\n\n::: posts\n'
@@ -89,9 +126,9 @@ render "$TMP/blog.md" "$OUT/blog/index.html" -M pagetitle=Blog
   head -n 5 "$TMP/sorted" | while IFS=$US read -r date slug title tags desc; do post_item; done
   printf ':::\n\n[Alle Beiträge →](%s/blog/)\n' "$BASE"
   # Timeline als rohes HTML, die Spalte liegt per CSS neben dem Inhalt (ohne Einträge entfällt sie)
-  if [ -s "$TMP/sorted" ]; then
+  if [ -s "$TMP/tl.sorted" ]; then
     printf '\n```{=html}\n<aside class="timeline" aria-label="Timeline">\n<h2>Timeline</h2>\n<div class="timeline-scroll">\n<ol class="timeline-list">\n'
-    head -n 8 "$TMP/sorted" | while IFS=$US read -r date slug title tags desc; do timeline_item; done
+    head -n 8 "$TMP/tl.sorted" | while IFS=$US read -r key date end kind slug title desc; do timeline_item; done
     printf '</ol>\n</div>\n</aside>\n```\n'
   fi
 } > "$TMP/home.md"
