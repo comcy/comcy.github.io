@@ -3,6 +3,8 @@
 :root {
   --bg: #0d1020; --bg2: #151a33; --fg: #e8ebf7; --muted: #98a1bf;
   --accent: #8b8bff; --accent2: #2dd4df;
+  /* Linkfarbe aus der Akzentfarbe, 35 % Textfarbe beigemischt: Kontrast mindestens 4,5:1 in allen Farbvarianten (tests/browser/kontrast.mjs) */
+  --link: color-mix(in srgb, var(--accent) 65%, var(--fg));
   --card: rgba(255, 255, 255, .06); --line: rgba(255, 255, 255, .12);
   --code: rgba(255, 255, 255, .08); --shadow: 0 8px 30px rgba(0, 0, 0, .35);
   color-scheme: dark;
@@ -59,7 +61,7 @@ nav a:hover, nav a:focus-visible { color: var(--accent); }
   html:not(.js) nav { flex-basis: 100%; order: 3; margin-left: 0; }
 }
 main { padding-top: 1rem; padding-bottom: 1rem; }
-a { color: var(--accent); }
+a { color: var(--link); }
 h1 { line-height: 1.15; margin-top: 2.2rem; letter-spacing: -.02em; font-size: 2.3rem; }
 h2, h3 { letter-spacing: -.01em; }
 .meta { color: var(--muted); font-size: .9rem; margin-top: -.5rem; }
@@ -167,7 +169,7 @@ div.sourceCode { position: relative; }
     linear-gradient(160deg, var(--bg), var(--bg2)) fixed;
 }
 :root[data-palette="neon"] .tag, :root[data-palette="pastel"] .tag {
-  color: var(--accent3); background: color-mix(in srgb, var(--accent3) 14%, transparent);
+  color: color-mix(in srgb, var(--accent3) 65%, var(--fg)); background: color-mix(in srgb, var(--accent3) 14%, transparent);
   border-color: color-mix(in srgb, var(--accent3) 45%, transparent);
 }
 :root[data-palette="neon"] blockquote, :root[data-palette="pastel"] blockquote { border-left-color: var(--accent4); }
@@ -222,7 +224,7 @@ main.home > .timeline { grid-column: 2; grid-row: 1 / span 99; align-self: start
 .tl-item::before { content: ""; position: absolute; left: calc(-1.25rem - 1px - .35rem); top: .25rem; width: .7rem; height: .7rem;
   border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--bg2); }
 .tl-item time { display: block; color: var(--muted); font-size: .8rem; }
-.tl-item a { text-decoration: none; font-weight: 600; color: color-mix(in srgb, var(--accent) 65%, var(--fg)); }
+.tl-item a { text-decoration: none; font-weight: 600; }
 .tl-item a:hover, .tl-item a:focus-visible { text-decoration: underline; }
 @media (max-width: 900px) { main.home { grid-template-columns: minmax(0, 1fr) 15rem; column-gap: 1.25rem; } }
 @media (max-width: 640px) {
@@ -232,7 +234,7 @@ main.home > .timeline { grid-column: 2; grid-row: 1 / span 99; align-self: start
 }
 
 /* Bookmarks in der Timeline: aufklappbarer Titel, Beschreibung und Zeitraum darunter */
-.tl-item details summary { cursor: pointer; font-weight: 600; color: color-mix(in srgb, var(--accent) 65%, var(--fg)); list-style: none; }
+.tl-item details summary { cursor: pointer; font-weight: 600; color: var(--link); list-style: none; }
 .tl-item details summary::-webkit-details-marker { display: none; }
 .tl-item details summary::after { content: " ▸"; }
 .tl-item details[open] summary::after { content: " ▾"; }
@@ -242,6 +244,5 @@ main.home > .timeline { grid-column: 2; grid-row: 1 / span 99; align-self: start
 
 /* Link zur vollständigen Timeline und die Seite /timeline/ */
 .timeline-more { margin: .5rem 0 0; font-size: .9rem; }
-.timeline-more a { color: color-mix(in srgb, var(--accent) 65%, var(--fg)); }
 .timeline-full .timeline-list { margin-top: 1rem; }
 .tl-sentinel { height: 1px; list-style: none; }
