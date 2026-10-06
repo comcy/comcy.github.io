@@ -38,6 +38,8 @@ description: Ein Satz, der beim Aufklappen erscheint.
 ---
 ```
 
+Weitere Einträge lädt die Startseite beim Scrollen im Container nach (Fragmente `/timeline/chunk-N.html` mit je 10 Einträgen, `static/timeline.js`). Ohne JavaScript führt "Alles ansehen" auf `/timeline/`. Die Browser-Prüfung dazu steht in `tests/browser/timeline-nachladen.mjs` (manuell, mit Chromium).
+
 Fehlendes oder ungültiges Datum, fehlender Titel und ein Ende vor dem Start brechen den Build mit dem Dateinamen ab.
 
 ## Lokal ansehen

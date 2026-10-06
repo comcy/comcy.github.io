@@ -10,8 +10,9 @@ OUT=public
 BASE=$(printf '%s' "$SITE_URL" | sed 's|^[a-z]*://[^/]*||')
 YEAR=$(date +%Y)
 # Prüfsumme von CSS und JS als Cache-Buster, damit Browser nach Änderungen sofort die neuen Dateien laden
-ASSET_V=$(cat static/style.css static/site.js | cksum | cut -d' ' -f1)
+ASSET_V=$(cat static/style.css static/site.js static/timeline.js | cksum | cut -d' ' -f1)
 TL_MAX=8  # Einträge der Timeline auf der Startseite; mehr führen zum Link "Alles ansehen" (README und tests/timeline-check.sh nennen den Wert)
+TL_CHUNK=10  # Einträge je nachladbarem Fragment unter /timeline/chunk-N.html
 US=$(printf '\037')  # Feldtrenner im Index (kein Whitespace, damit leere Felder erhalten bleiben)
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -119,6 +120,9 @@ for f in pages/*.md timeline/*.md; do
   printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\n' "$(norm_date "$date")" "$kind" "$slug" "$date" "$end" "$title" "$desc" >> "$TMP/tl"
 done
 LC_ALL=C sort -r "$TMP/tl" > "$TMP/tl.sorted"
+# Anzahl der Fragmente für die Einträge jenseits der Startseite (aufgerundet)
+tl_total=$(wc -l < "$TMP/tl.sorted"); TL_CHUNKS=0
+[ "$tl_total" -gt "$TL_MAX" ] && TL_CHUNKS=$(( (tl_total - TL_MAX + TL_CHUNK - 1) / TL_CHUNK ))
 
 # --- Blog-Übersicht und Startseite ----------------------------------------------
 {
@@ -135,7 +139,8 @@ render "$TMP/blog.md" "$OUT/blog/index.html" -M pagetitle=Blog
   printf ':::\n\n[Alle Beiträge →](%s/blog/)\n' "$BASE"
   # Timeline als rohes HTML, die Spalte liegt per CSS neben dem Inhalt (ohne Einträge entfällt sie)
   if [ -s "$TMP/tl.sorted" ]; then
-    printf '\n```{=html}\n<aside class="timeline" aria-label="Timeline">\n<h2>Timeline</h2>\n<div class="timeline-scroll">\n<ol class="timeline-list">\n'
+    scroll_attrs=; [ "$TL_CHUNKS" -gt 0 ] && scroll_attrs=" data-chunks=\"$TL_CHUNKS\" data-src=\"$BASE/timeline/chunk-\""
+    printf '\n```{=html}\n<aside class="timeline" aria-label="Timeline">\n<h2>Timeline</h2>\n<div class="timeline-scroll"%s>\n<ol class="timeline-list">\n' "$scroll_attrs"
     head -n "$TL_MAX" "$TMP/tl.sorted" | while IFS=$US read -r key kind slug date end title desc; do timeline_item; done
     printf '</ol>\n</div>\n'
     # ab dem Eintrag TL_MAX+1 führt ein Link auf die vollständige Seite
@@ -155,6 +160,13 @@ if [ -s "$TMP/tl.sorted" ]; then
     printf '</ol>\n</section>\n```\n'
   } > "$TMP/timeline.md"
   render "$TMP/timeline.md" "$OUT/timeline/index.html" -M pagetitle=Timeline
+  # Fragmente zum Nachladen: nur <li>-Elemente, Einträge ab TL_MAX+1 in Blöcken zu TL_CHUNK
+  k=1
+  while [ "$k" -le "$TL_CHUNKS" ]; do
+    tail -n +$(( TL_MAX + (k - 1) * TL_CHUNK + 1 )) "$TMP/tl.sorted" | head -n "$TL_CHUNK" |
+      while IFS=$US read -r key kind slug date end title desc; do timeline_item; done > "$OUT/timeline/chunk-$k.html"
+    k=$((k + 1))
+  done
 fi
 
 # --- Themen (Tags) ------------------------------------------------------------

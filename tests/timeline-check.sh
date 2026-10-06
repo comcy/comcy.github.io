@@ -224,4 +224,25 @@ fresh readme
 awk '/^```markdown$/ { b = ""; inb = 1; next } /^```$/ { if (inb && b ~ /end: now/) { printf "%s", b; exit } inb = 0; next } inb { b = b $0 "\n" }' "$ROOT/README.md" > "$W/timeline/readme-beispiel.md"
 if [ -s "$W/timeline/readme-beispiel.md" ] && build && timeline_html | tr '\n' ' ' | grep -q 'Entwicklungsprozess mit OpenSpec aufgesetzt.*2026-10-04 – laufend'; then ok "README-Beispiel baut und zeigt den Zeitraum"; else no "README-Beispiel baut und zeigt den Zeitraum"; fi
 
+# 24. Fragmente zum Nachladen: Einträge ab TL_MAX+1, je 10, keine Dopplung, nichts fehlt
+fresh chunks
+i=0; while [ "$i" -lt 25 ]; do i=$((i+1)); post "2026-05-$(printf '%02d' "$i")-c$i" "C $i"; done
+must_build
+n1=$(grep -c 'class="tl-item"' "$W/public/timeline/chunk-1.html" 2>/dev/null); n2=$(grep -c 'class="tl-item"' "$W/public/timeline/chunk-2.html" 2>/dev/null)
+rest=$((25 - TL_MAX)); want2=$((rest - 10))
+if [ "$n1" = 10 ] && [ "$n2" = "$want2" ] && [ ! -e "$W/public/timeline/chunk-3.html" ]; then ok "25 Einträge: Fragmente mit 10 und $want2 Einträgen, kein drittes"; else no "25 Einträge: Fragmente mit 10 und $want2 Einträgen, kein drittes (war: $n1, $n2)"; fi
+home=$(timeline_html | grep -o 'blog/c[0-9]*/' | tr '\n' ' ')
+ch=$(cat "$W/public/timeline/chunk-1.html" "$W/public/timeline/chunk-2.html" 2>/dev/null | grep -o 'blog/c[0-9]*/' | tr '\n' ' ')
+all=$(full | grep -o 'blog/c[0-9]*/' | tr '\n' ' ')
+if [ "$home$ch" = "$all" ] && [ "$(printf '%s' "$all" | tr ' ' '\n' | sed '/^$/d' | sort | uniq -d | wc -l)" = 0 ]; then ok "Startseite plus Fragmente entsprechen der vollständigen Seite, ohne Doppelungen"; else no "Startseite plus Fragmente entsprechen der vollständigen Seite, ohne Doppelungen"; fi
+if timeline_html | grep -q 'class="timeline-scroll"[^>]*data-chunks="2"[^>]*data-src="/timeline/chunk-"'; then ok "Container nennt Fragmentzahl und Quelle"; else no "Container nennt Fragmentzahl und Quelle"; fi
+
+# 25. Keine Fragmente, wenn alles auf die Startseite passt oder genau ein Fragment reicht
+fresh klein; i=0; while [ "$i" -lt "$TL_MAX" ]; do i=$((i+1)); post "2026-06-$(printf '%02d' "$i")-k$i" "K $i"; done
+must_build
+if [ ! -e "$W/public/timeline/chunk-1.html" ] && ! timeline_html | grep -q 'data-chunks'; then ok "bis TL_MAX Einträge: keine Fragmente, kein data-chunks"; else no "bis TL_MAX Einträge: keine Fragmente, kein data-chunks"; fi
+fresh genau; i=0; while [ "$i" -lt $((TL_MAX + 10)) ]; do i=$((i+1)); post "2026-07-$(printf '%02d' "$i")-g$i" "G $i"; done
+must_build
+if [ -e "$W/public/timeline/chunk-1.html" ] && [ ! -e "$W/public/timeline/chunk-2.html" ] && timeline_html | grep -q 'data-chunks="1"'; then ok "TL_MAX+10 Einträge: genau ein Fragment"; else no "TL_MAX+10 Einträge: genau ein Fragment"; fi
+
 exit $FAIL
