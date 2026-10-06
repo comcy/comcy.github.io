@@ -158,9 +158,12 @@ Dagegen: Es ist ein eigener Agent-Runner (Python, neue Abhängigkeit), er ersetz
 
 ## Offen / zu erproben
 
-- `tasks.md` ist nach Schichten geordnet, `/to-tickets` verlangt vertikale Scheiben: `tasks.md` war Eingabe, nicht Ergebnis. Task-Regel in `openspec/config.yaml` auf vertikale Scheiben umstellen?
-- Sub-Issues und `blocked_by` per `gh api` anlegen: bei Ticket #20 fehlte beim ersten Lauf eine Beziehung. Ein Skript sollte nach dem Anlegen prüfen, dass alle Beziehungen gesetzt sind.
-- Brauchen wir Phase 3 bei einem Ein-Personen-Repo, oder reicht `tasks.md` + `/implement`?
-- Lohnt OpenSpecs `verify` zusätzlich zu `code-review`?
-- ~~Erkennt Claude Code die Skills aus `.agents/skills/`?~~ Nein, deshalb lokaler Adapter pro Person (siehe Setup-Checkliste).
-- Wie viel Overhead ist ein Change für eine kleine Änderung? (Schwelle definieren.)
+Erfahrungen aus dem ersten durchlaufenen Change (`timeline-startseite`, 2026-10-06, 8 Tickets, 9 PRs inklusive CI):
+
+- **`tasks.md` und `/to-tickets`:** `tasks.md` war nach Schichten geordnet (Daten, Ausgabe, Layout), `/to-tickets` verlangt vertikale Scheiben. Die Tasks waren Eingabe, nicht Ergebnis. Die Task-Regel in `openspec/config.yaml` verlangt jetzt vertikale Scheiben. Ob das reicht, zeigt der nächste Change.
+- **Phase 3 bei einem Ein-Personen-Repo:** Die Tickets mit Blockern haben sich getragen (ein PR je Ticket, klare Reihenfolge, Frontier sichtbar). Der Aufwand lag im Schneiden, nicht im Pflegen. Beibehalten.
+- **`code-review` statt `verify`:** Das Review über drei Tickets fand zwei echte Spec-Fehler (leere Spalte ohne Einträge, Ende gleich Start) und mehrere Pflegepunkte, die der TDD-Lauf nicht gezeigt hatte. Lohnt sich nach jeder Gruppe von Tickets, nicht erst am Ende.
+- **Overhead eines Changes:** Proposal, Specs, Design und Tasks waren schnell geschrieben (ein Zug), den Aufwand machten Umsetzung, Tests und Abnahme. Vermutung, noch nicht gemessen: Für Änderungen mit weniger als etwa einem Ticket Aufwand lohnt der Change nicht, dann reichen Issue, `/tdd` und PR.
+- **Abnahme-Gate:** Die lokale Abnahme vor der Freigabe hat sich bewährt. Merges vor dem CI-Ergebnis verhindert jetzt der Branch-Schutz (Check `test`).
+- **Skripte statt Prosa für Browser-Prüfungen:** Headless Chromium über das DevTools-Protokoll aus Node reicht für Nachladen, Tastatur, Kontrast und 375 px, ohne neue Abhängigkeit. Die Prüfungen laufen manuell, nicht in der CI.
+- **Testlaufzeit:** 48 Fälle brauchen lokal etwa 75 Sekunden und wachsen mit jedem Fall. Fixtures verkleinern oder Builds teilen, bevor es zu langsam wird.

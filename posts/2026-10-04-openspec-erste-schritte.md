@@ -71,6 +71,19 @@ Reihenfolge, die ich verfolge: erst agentenunabhängige Mittel (Git-Hooks, CI, B
 - `/to-tickets` ließ sich von Hand nach `SKILL.md` ausführen: Die Tasks (nach Schichten geordnet) wurden zu 5 vertikalen Scheiben umgeschnitten, ich habe sie vorgestellt, du hast sie bestätigt, erst dann habe ich veröffentlicht. Ergebnis: 5 Sub-Issues von #13 (#16 bis #20) mit `ready-for-agent` und nativen `blocked_by`-Beziehungen (Sub-Issue- und Dependency-API von GitHub per `gh api`, funktionierte beim ersten Versuch bis auf eine verlorene Beziehung, die ich nachträglich setzen musste: dort lohnt später eine Prüfung im Skript).
 - Beobachtung: `tasks.md` aus OpenSpec ist nach Schichten geordnet (Daten, Ausgabe, Layout), `/to-tickets` verlangt vertikale Scheiben. Beides zusammen braucht eine Übersetzung, die Tasks sind Eingabe, nicht Ergebnis. Eventuell die Task-Regel in `openspec/config.yaml` anpassen ("vertikale Scheiben statt Schichten").
 
+## Ergebnis: der erste Change ist durch
+
+`timeline-startseite` ist umgesetzt und archiviert: eine Timeline auf der Startseite mit Beiträgen, Seiten und manuellen Bookmarks, aufklappbar, mit Nachladen beim Scrollen und einer vollständigen Seite `/timeline/`.
+
+Zahlen: 8 Tickets (Sub-Issues eines Feature-Issues), 9 Pull Requests inklusive CI, 48 Shell-Tests über den Build und 47 Browser-Prüfungen (Kontrast in acht Farbvarianten, Tastatur, 375 px, Nachladen), zwei Specs mit 13 Requirements, die beim Archivieren in `openspec/specs/` gelandet sind.
+
+Was der Prozess gefunden hat:
+- **Code-Review über drei Tickets:** zwei echte Fehler gegen die Spec (leere Spalte ohne Einträge, Ende gleich Start), die TDD und Screenshots nicht gezeigt hatten.
+- **Abnahme-Skript:** der Link-Kontrast lag in drei hellen Farbvarianten unter 4,5:1 (nord hell 3,31:1). Das Problem trifft alle Links der Seite, nicht nur die Timeline.
+- **Branch-Schutz:** Ein PR wurde gemergt, bevor die CI lief. Seitdem verlangt der Branch-Schutz den Check `test`.
+- **`tasks.md` nach Schichten:** `/to-tickets` verlangt vertikale Scheiben. Die Task-Regel verlangt jetzt Scheiben, ob das reicht, zeigt der nächste Change.
+- **Specs nachgezogen:** Beim Archivieren mussten die Specs an den gebauten Stand angepasst werden (Gleichstand beim Sortieren, Ende gleich Start, Lesbarkeit). Specs, die vor dem Bauen entstehen, sind eine Annahme, keine Wahrheit.
+
 ## Noch zu dokumentieren
 
 - Erster Change von der Idee bis zum Archive.
