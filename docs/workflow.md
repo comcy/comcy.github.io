@@ -128,10 +128,11 @@ Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Date
 ### Evals (`evals/run.py`)
 
 `python3 evals/run.py [aufgabe …] [--runs 3] [--model M] [--budget USD]` prüft, ob sich der Agent an den Prozess hält. Je Lauf entsteht ein Wegwerf-Repo aus dem Arbeitsstand (`AGENTS.md`, `docs/agents/`, `workflow/`, `scripts/`, `.githooks/`, `openspec/config.yaml`, `.agents/skills/`) mit Stub-`gh` (`evals/gh_stub.py`: Zustand aus `state.json`, Schreibaufrufe im Protokoll, schreibt nur unter `STUB_ROOT`) vor dem PATH. Der Agent startet nur in `starte_agent(...)` (`claude -p` mit `--max-budget-usd`, `--model`, begrenzten Tools), danach läuft `check(ctx)` der Aufgabe.
-- Aufgabe = Ordner `evals/tasks/<id>/` mit `prompt.md`, `state.json`, `check.py` (`check(ctx) -> list[str]`, leer = bestanden); `ctx` hat `repo`, `state`, `gh_writes`, `tool_calls`.
+- Aufgabe = Ordner `evals/tasks/<id>/` mit `prompt.md`, `state.json`, `check.py` (`check(ctx) -> list[str]`, leer = bestanden); `ctx` hat `repo`, `state`, `gh_writes`, `tool_calls`. Optional `vorbereiten(repo, env)` in `check.py` richtet das Wegwerf-Repo weiter ein (z. B. zweiter Worktree).
+- Mitschnitt: `evals/stream_json.py` liest die stdout des Agenten (`--output-format stream-json`) und liefert `ctx.tool_calls` = `[{"name": "Bash", "input": {"command": …}}, …]`; unbekannte Ereignisse und kaputte Zeilen werden übersprungen. Das Format ist angenommen (nicht mit echtem `claude` verifiziert). Rohausgabe je Lauf: `evals/runs/<zeit>/<aufgabe>-<n>/agent.out`.
 - Bestanden ab Mehrheit der Läufe (`--runs 3`: 2 von 3); Bericht `evals/reports/<datum>-<uhrzeit>.md`, Rohdaten in `evals/runs/` (ignoriert). Läufe kosten echtes Geld. Fehlt `claude` oder ist es nicht angemeldet, gibt es eine Meldung (Exit-Code 2).
 - Unit-Tests (`tests/test_evals_run.py`) nutzen ein Fake-`claude` im PATH, nie einen echten Agenten.
-- Bisher: Aufgabe `blocker-offen`; weitere Aufgaben, Mitschnitt und Vergleichsbericht folgen laut `openspec/changes/agent-evals/`.
+- Bisher: Aufgaben `blocker-offen`, `kein-git-stash` (scheitert bei `git stash`, auch `git -C x stash`); weitere Aufgaben und Vergleichsbericht folgen laut `openspec/changes/agent-evals/`.
 
 ## Teil B: Dieses Repo
 
