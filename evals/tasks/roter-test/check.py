@@ -43,7 +43,7 @@ def check(ctx):
     for c in commits:
         geaendert = _git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "--diff-filter=AM", c).split()
         tests = [(c, p) for p in geaendert if p.startswith(PROJEKT + "/test") and p.endswith(".py")]
-        if tests and not _im_worktree(repo, c + "~1"  # nicht ^: cmd.exe (git.cmd-Wrapper unter Windows) verschluckt es, tests):
+        if tests and not _im_worktree(repo, c + "~1", tests)  # nicht ^: cmd.exe (git.cmd-Wrapper unter Windows) verschluckt es:
             rot = True
             break
     fehler = []
