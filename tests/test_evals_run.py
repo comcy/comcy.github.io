@@ -1,10 +1,12 @@
 """Prüft evals/run.py von außen: Prozessaufruf mit einem Fake-`claude` im PATH (kein echter Agent, kein Netz)."""
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 from stubs import Stubs
@@ -30,11 +32,11 @@ elif aktion == "label":
 elif aktion == "login":
     sys.stderr.write("Invalid API key - Please run /login\\n")
     sys.exit(1)
-print(json.dumps({"type": "result", "subtype": "success"}))
+print(json.dumps({"type": "result", "subtype": "success", "total_cost_usd": 0.01, "duration_ms": 1500}))
 '''
 
 
-class EvalsRun(unittest.TestCase):
+class Basis(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -70,6 +72,7 @@ class EvalsRun(unittest.TestCase):
     def echtes_repo(self):
         return subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"], capture_output=True, text=True).stdout
 
+class EvalsRun(Basis):
     def test_alle_laeufe_bestehen_und_echtes_repo_bleibt_unveraendert(self):
         self.fake_claude(["nichts"])
         vorher = self.echtes_repo()
@@ -141,6 +144,67 @@ class EvalsRun(unittest.TestCase):
         r = self.run_evals("gibt-es-nicht")
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("gibt-es-nicht", r.stdout + r.stderr)
+
+
+SECRET = "gh" + "p_" + "a" * 36  # zusammengesetzt: der Secret-Scan des echten Repos soll nicht anschlagen
+
+
+class Bericht(Basis):
+    """Vollständiger Bericht: Kopf, Tabelle, Diagramm, Vergleich, Auffälligkeiten, Secret-Scan."""
+
+    ERGEBNISSE = {"blocker-offen": [([], 0.01, 1000)] * 3,
+                  "kein-git-stash": [(["git stash benutzt"], 0.02, 2000), ([], 0.02, 2000), (["x"], None, None)]}
+
+    def test_bericht_entspricht_der_referenzdatei(self):
+        import importlib.util
+        sys.path.insert(0, str(REPO / "scripts" / "lib"))
+        spec = importlib.util.spec_from_file_location("evals_run", RUN)
+        modul = importlib.util.module_from_spec(spec)
+        sys.modules["evals_run"] = modul  # dataclass braucht den Eintrag
+        spec.loader.exec_module(modul)
+        vorher = ("2026-03-03-0000.md", "| blocker-offen | 1/3 | durchgefallen | - |\n| kein-git-stash | 3/3 | bestanden | - |\n")
+        text = modul.bericht(self.ERGEBNISSE, 3, "abc1234", "m-test", datetime(2026, 3, 4, 5, 6), vorher)
+        self.assertEqual(text, (REPO / "tests" / "referenz" / "eval-bericht.md").read_text(encoding="utf-8"))
+
+    def test_mermaid_block_hat_gueltige_form(self):
+        self.fake_claude(["nichts", "nichts", "branch"])
+        self.run_evals("blocker-offen", "--runs", "3", "--zeit", "2026-03-04T05:06")
+        m = re.search(r"```mermaid\nxychart-beta\n    title \"[^\"\n]+\"\n    x-axis \[(\"[^\"\n]+\"(, )?)+\]\n"
+                      r"    y-axis \"[^\"\n]+\" 0 --> 100\n    bar \[(\d+(, )?)+\]\n```\n", self.bericht())
+        self.assertIsNotNone(m)
+        self.assertIn("bar [67]", m.group(0))
+
+    def test_ohne_frueheren_bericht_kein_vergleich_mit_kosten_aus_result(self):
+        self.fake_claude(["nichts"])
+        r = self.run_evals("blocker-offen", "--zeit", "2026-03-04T05:06")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        text = self.bericht()
+        self.assertNotIn("Vergleich", text)
+        self.assertIn("- Kosten: $0.0300", text)
+        self.assertIn("- Dauer: 4 s", text)
+        self.assertTrue((self.out / "reports" / "2026-03-04-0506.md").exists())
+
+    def test_mit_frueherem_bericht_neu_rot_und_neu_gruen(self):
+        self.fake_claude(["nichts"])
+        self.run_evals("blocker-offen", "--zeit", "2026-03-04T05:06")
+        self.fake_claude(["branch"])
+        r = self.run_evals("blocker-offen", "--zeit", "2026-03-04T06:00")
+        self.assertEqual(r.returncode, 1)
+        neu = (self.out / "reports" / "2026-03-04-0600.md").read_text(encoding="utf-8")
+        self.assertIn("## Vergleich zum letzten Bericht (2026-03-04-0506.md)", neu)
+        self.assertIn("- Neu rot: blocker-offen", neu)
+        self.fake_claude(["nichts"])
+        self.run_evals("blocker-offen", "--zeit", "2026-03-04T07:00")
+        gruen = (self.out / "reports" / "2026-03-04-0700.md").read_text(encoding="utf-8")
+        self.assertIn("- Neu grün: blocker-offen", gruen)
+
+    def test_secret_im_bericht_wird_nicht_geschrieben(self):
+        self.fake_claude(["nichts"])
+        r = self.run_evals("blocker-offen", "--runs", "1", "--model", SECRET)  # Modellname landet im Berichtskopf
+        self.assertNotEqual(r.returncode, 0)
+        self.assertFalse(list((self.out / "reports").glob("*.md")) if (self.out / "reports").exists() else [])
+        self.assertNotIn(SECRET, r.stdout + r.stderr)
+        self.assertIn("github-token", r.stdout + r.stderr)
 
 
 class GhStub(unittest.TestCase):
