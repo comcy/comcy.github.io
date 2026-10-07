@@ -73,12 +73,20 @@ Unter Windows `py -3 scripts\setup.py …`. Das Setup tut Folgendes (Details in 
 1. **Voraussetzungen** aus `scripts/setup.d/tools.tsv` prüfen; ein fehlendes Pflichtprogramm bricht ab, ohne etwas zu ändern.
 2. **Adapter:** `openspec init --tools agents[,<agent>]` (nur wenn ein Adapterordner fehlt), die gewählten Agenten stehen in `git config --local setup.agents` und werden beim nächsten Aufruf ohne Argument wieder genutzt. Bei abweichender `openspec`-Version (`generatedBy` in den Skills) ruft ein Lauf `openspec update` auf. Agenten und ihre Ordner stehen in `scripts/setup.d/agents.tsv`.
 3. **Ausschlüsse:** Die Ordner der Agenten (`.claude/` usw.) kommen einmalig in `.git/info/exclude`, nicht in die `.gitignore`. `.agents/` bleibt eingecheckt (agentenneutrale Basis).
-4. **Hooks:** `core.hooksPath` auf `.githooks`, sobald dieser Ordner existiert.
+4. **Hooks:** `core.hooksPath` auf `.githooks`, sobald dieser Ordner existiert. Dort liegt `commit-msg`, eine dünne `sh`-Hülle um `scripts/gate.py` (siehe "Commit-Lint").
 5. **Labels** nur mit `--labels`: fehlende Labels der Zustände aus `workflow/states.tsv`, vorhandene bleiben unberührt. Ohne den Schalter nennt `setup` nur die Zahl der fehlenden Labels.
 
 Ein zweiter Lauf meldet "nichts zu tun". Von Hand bleibt: `/setup-matt-pocock-skills` (`AGENTS.md`, `docs/agents/*.md`), in `openspec/config.yaml` die Regeln `rules.tasks` und `operations.*.guidance` (Beispiel: Teil B), dieses Dokument ins Projekt legen und optional eigene Haken (siehe "Eigene Anpassungen").
 
 Warum lokal: Claude Code sucht Projekt-Skills nur in `.claude/skills/`, nicht in `.agents/skills/`. Die agentenspezifischen Dateien sind abgeleitet (`openspec update` erzeugt sie neu), jede Person braucht nur den Adapter für ihren Agenten. Ein Klon-Hook ist in Git nicht möglich (Hooks werden nicht mitgeklont), deshalb ist `scripts/setup.py` der feste erste Schritt.
+
+### Commit-Lint (`scripts/gate.py`)
+
+```
+python3 scripts/gate.py commits origin/master..HEAD   # Betreffzeilen eines Bereichs prüfen (Exit-Code 1 bei Verstoß)
+python3 scripts/gate.py commit-msg <datei>            # Nachricht des entstehenden Commits (ruft der Hook auf)
+```
+Regel: `type(scope)!: Betreff`, Scope und `!` (Breaking) sind optional. Erlaubte Typen: `scripts/gate.d/commit-types.tsv`. Merge-Commits und `Revert "…"` sind erlaubt. Die Meldung nennt Commit, Betreff und Regel. Der Hook `.githooks/commit-msg` enthält keine Logik, er sucht `python3`, `python` oder `py -3` und ruft dieselbe Prüfung auf; die CI soll später dieselben Befehle mit Bereichen aufrufen (Change `workflow-gates`). Der Hook ist nur frühe Rückmeldung (`--no-verify` umgeht ihn), verbindlich ist die CI. Die Autor-Mail wird nicht geprüft.
 
 ### Prozessdaten (`workflow/`)
 
@@ -108,7 +116,7 @@ Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Date
 - Stack: POSIX-Shell + pandoc, kein Testframework. "Test" heißt hier: `sh build.sh` läuft sauber, erwartete Dateien in `public/` existieren, Stichproben per `grep`. Ein Check pro Logik, kein Framework (ponytail).
 - Zusätzliche Voraussetzung: `pandoc` (Arch: `sudo pacman -Syu pandoc-cli`).
 - Sprache der Specs: Deutsch, Strukturüberschriften und SHALL/MUST englisch (`openspec/config.yaml`).
-- Commits: Conventional Commits, Secret-Scan vor dem Staging.
+- Commits: Conventional Commits (erzwungen durch Hook `commit-msg`, siehe "Commit-Lint"), Secret-Scan vor dem Staging.
 - Geplante Changes: `timeline-startseite` (PR 1), `zweisprachig-de-en` (PR 2). Vorlage: `docs/plans/zweisprachig-und-timeline.md`.
 - Beobachtungen zur Einrichtung:
   - `openspec init --tools claude` legte `.claude/skills/` (6 Skills) **und** `.claude/commands/opsx/` (6 Commands) an, dieselben sechs Abläufe doppelt. `--tools agents` legt nur `.agents/skills/` an (6 Skills, keine Commands). Wir nutzen `agents` im Repo und den Claude-Adapter nur lokal.
@@ -131,6 +139,7 @@ Haken an den generischen Phasen. Nur persönlich, nicht Teil des generischen Abl
 ## Teststrategie
 
 - **Szenario heißt Testfall:** Jedes Szenario einer OpenSpec-Spec ist ein Testfall. Die Shell-Tests unter `tests/<fähigkeit>-check.sh` sind die ausführbare Form des Verhaltens und bleiben im Repo. `<fähigkeit>` ist der Name der Fähigkeit (z. B. `timeline`), nicht der Name des Changes (`timeline-startseite`).
+- **Teststelle für die Skripte:** Prozessaufruf von `scripts/setup.py`, `scripts/flow.py` bzw. `scripts/gate.py` in einem Wegwerf-Repo (Hooks mit echtem `git commit`), Stub-Programme für `gh` und `openspec`; die Tests schreiben nie ins echte Repo.
 - **Teststelle ist der Build-Aufruf:** `sh build.sh` in einem temporären Klon mit eigenen Fixtures, geprüft wird `public/` und der Fehlercode (Black-Box, keine internen Funktionen). Vor dem ersten Test werden die Teststellen bestätigt (`/tdd`).
 - **Layout per Screenshot:** Optik ist im Build-Output nicht sinnvoll prüfbar. Screenshots dienen als Beleg am PR (Branch `pr-screenshots`) und sind nicht persistent.
 - **Wo es läuft:** lokal mit `sh tests/run.sh`, in der CI auf jedem Pull Request und vor dem Veröffentlichen. Ein verbindlicher Branch-Schutz ("Status check erforderlich") ist eine GitHub-Einstellung und bewusst noch nicht gesetzt.

@@ -1,0 +1,13 @@
+# Erlaubte Typen für Conventional Commits (Betreff: type(scope)!: Betreff), geprüft von scripts/gate.py commits.
+type	description
+feat	neue Funktion
+fix	Fehlerbehebung
+docs	nur Dokumentation
+style	Formatierung ohne Verhaltensänderung
+refactor	Umbau ohne Verhaltensänderung
+perf	Performance
+test	Tests
+build	Build und Abhängigkeiten
+ci	CI-Konfiguration
+chore	Sonstiges
+revert	Rücknahme

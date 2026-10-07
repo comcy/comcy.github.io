@@ -1,5 +1,5 @@
 ## 1. Commit-Lint (vertikale Scheibe)
-- [ ] 1.1 `gate commits <bereich>` plus Hook `commit-msg`, Tests am Prozessaufruf, Doku in `docs/workflow.md`
+- [x] 1.1 `gate commits <bereich>` plus Hook `commit-msg`, Tests am Prozessaufruf, Doku in `docs/workflow.md`
 
 ## 2. Secret-Scan
 - [ ] 2.1 `gate secrets` (Index und Bereich) plus Hook `pre-commit`, Regelliste, Allowlist, Tests (kein Wert in der Ausgabe), Doku
