@@ -40,5 +40,6 @@ def run(exe: str, args: list[str] | tuple[str, ...] = (), cwd: Path | None = Non
 
 def utf8_output() -> None:
     """Ausgabe immer als UTF-8, damit sie unter Windows (Umleitung, CI) nicht von der Konsolenkodierung abhängt."""
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
+    for strom in (sys.stdout, sys.stderr):
+        if hasattr(strom, "reconfigure"):
+            strom.reconfigure(encoding="utf-8")
