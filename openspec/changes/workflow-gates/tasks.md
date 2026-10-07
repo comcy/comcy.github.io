@@ -8,7 +8,7 @@
 - [ ] 3.1 Job `gates` in `test.yml` (Commits und Diff des PR), Hinweis zum Branch-Schutz an Repo-Eigner
 
 ## 4. Setup-Prüfung
-- [ ] 4.1 `setup --check` meldet inaktive Hooks bzw. fehlendes `python`, Tests
+- [x] 4.1 `setup --check` meldet inaktive Hooks bzw. fehlendes `python`, Tests
 
 ## 5. Zustandswechsel
 - [ ] 5.1 `flow start <issue>` mit `--dry-run`, Tests mit `gh`-Stub

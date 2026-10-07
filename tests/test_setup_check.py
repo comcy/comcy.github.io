@@ -112,6 +112,36 @@ class OhneAenderung(Basis):
         self.assertEqual(vorher, nachher)
 
 
+class Hooks(Basis):
+    def setUp(self):
+        super().setUp()
+        (self.repo / ".githooks").mkdir()
+        self.stubs.add("python3", "Python 3.12.0")
+
+    def test_hooks_path_nicht_gesetzt_wird_gemeldet_ohne_zu_aendern(self):
+        vorher = self.zustand()
+        r = self.check()
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("core.hooksPath", r.stdout)
+        self.assertIn("setup.py", r.stdout)
+        self.assertEqual(self.zustand(), vorher)
+        self.assertIsNone(self.git_config("core.hooksPath"))
+
+    def test_python_nicht_im_path_wird_gemeldet(self):
+        self.run_setup()  # setzt core.hooksPath
+        (self.stubs.dir / ("python3.cmd" if sys.platform == "win32" else "python3")).unlink()
+        r = self.check()
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("python", r.stdout)
+        self.assertIn("PATH", r.stdout)
+
+    def test_alles_in_ordnung_ohne_zusaetzlichen_befund(self):
+        self.run_setup()
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("FEHLT", r.stdout)
+
+
 class Daten(Basis):
     def test_ungueltige_prozessdaten_machen_check_rot_mit_denselben_meldungen(self):
         pfad = self.repo / "workflow" / "states.tsv"
