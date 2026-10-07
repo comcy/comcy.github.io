@@ -26,6 +26,7 @@ HOOKS_DIR = ".githooks"
 class Step:
     label: str
     apply: Callable[[], None]
+    hint: str = ""  # Abhilfe, nur für die Meldung von --check
 
 
 def read_agents(root: Path, findings: list[Finding]) -> dict[str, str]:
@@ -111,6 +112,11 @@ def add_exclude_line(root: Path, zeile: str) -> None:
     pfad.write_text(text + zeile + "\n", encoding="utf-8", newline="\n")
 
 
+def hooks_python_missing(root: Path) -> bool:
+    """Die Hooks in .githooks starten python3, python oder py; ohne eines davon im PATH greifen sie nicht."""
+    return (root / HOOKS_DIR).is_dir() and not any(proc.find(n) for n in ("python3", "python", "py"))
+
+
 def plan(root: Path, agenten: list[str], ordner: dict[str, str], explizit: bool) -> list[Step]:
     """Schritte, die für die gewählten Agenten fehlen (Reihenfolge: Adapter, Ausschlüsse, Hooks, Wahl speichern)."""
     schritte: list[Step] = []
@@ -136,7 +142,8 @@ def plan(root: Path, agenten: list[str], ordner: dict[str, str], explizit: bool)
         aktuell = git(root, "config", "--local", "--get", "core.hooksPath").stdout.strip()
         if aktuell != HOOKS_DIR:
             schritte.append(Step(f"core.hooksPath auf {HOOKS_DIR} setzen",
-                                 lambda: git_config_set(root, "core.hooksPath", HOOKS_DIR)))
+                                 lambda: git_config_set(root, "core.hooksPath", HOOKS_DIR),
+                                 "python3 scripts/setup.py (Windows: py -3 scripts\\setup.py)"))
     if explizit and stored_agents(root) != agenten:
         wert = " ".join(agenten)
         schritte.append(Step(f"Agentenwahl speichern (setup.agents = {wert})",

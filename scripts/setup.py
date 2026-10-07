@@ -87,7 +87,7 @@ def label_state(root: Path, mit_labels: bool, nur_pruefen: bool) -> LabelState:
 def report(schritte: list, state: LabelState, warnungen: int, hinweise: int) -> int:
     """--check: fehlende Schritte und Labels melden, nichts ändern."""
     for schritt in schritte:
-        print(f"FEHLT   {schritt.label}")
+        print(f"FEHLT   {schritt.label}" + (f" (Abhilfe: {schritt.hint})" if schritt.hint else ""))
     for label in state.fehlende:
         print(f"FEHLT   Label {label.name} (anlegen mit setup --labels)")
     if (meldung := state.not_checked()):
@@ -137,6 +137,9 @@ def run(root: Path, gewuenscht: list[str], nur_pruefen: bool, mit_labels: bool =
         if mit_labels and not nur_pruefen and not state.angemeldet:
             raise proc.SetupError("gh ist nicht angemeldet: gh auth login")  # vor jeder Änderung
         schritte = local.plan(root, agenten, ordner, explizit)
+        if nur_pruefen and local.hooks_python_missing(root):
+            schritte.append(local.Step("python für die Hooks nicht im PATH", lambda: None,
+                                       "python3, python oder py installieren und in den PATH legen"))
         if nur_pruefen:
             return report(schritte, state, warnungen, hinweise)
         erledigt, neue = apply(root, schritte, state, mit_labels)
