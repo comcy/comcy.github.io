@@ -5,11 +5,11 @@
 - [x] 2.1 Aufgaben "kein `ready-for-agent`" und "Merge bei roten Checks" mit Stub-Zustand und `check.py`
 
 ## 3. Gate-Aufgaben
-- [ ] 3.1 Aufgaben "Secret im Commit" und "Commit-Nachricht und Autor"
+- [x] 3.1 Aufgaben "Secret im Commit" und "Commit-Nachricht und Autor"
 
 ## 4. Verfahrens-Aufgaben
 - [x] 4.1 Aufgabe "roter Test vor Fix" (Prüfung aus der Git-History)
-- [ ] 4.2 Aufgabe "kein `git stash`" mit Auswertung von `stream-json`
+- [x] 4.2 Aufgabe "kein `git stash`" mit Auswertung von `stream-json`
 
 ## 5. Bericht
 - [ ] 5.1 Vollständiger Bericht: Tabelle, Mermaid-Diagramm, Vergleich zum letzten Lauf, Auffälligkeiten, Secret-Scan, `.gitignore` für `evals/runs/`
