@@ -63,6 +63,17 @@ class Secrets(MitGitRepo):
         self.assertIn("a.txt", r.stdout)
         self.keine_werte(r, TOKEN)
 
+    def test_bereich_findet_wieder_entferntes_secret(self):
+        self.git("commit", "-q", "--allow-empty", "-m", "chore: Start")
+        self.schreibe("a.txt", f"{TOKEN}\n")
+        self.git("commit", "-q", "--no-verify", "-m", "feat: a")
+        self.schreibe("a.txt", "sauber\n")
+        self.git("commit", "-q", "--no-verify", "-m", "fix: a bereinigt")
+        r = self.gate("secrets", "--range", "HEAD~2..HEAD")  # Netto-Diff ist sauber, die History nicht
+        self.assertNotEqual(r.returncode, 0, r.stdout)
+        self.assertIn("a.txt", r.stdout)
+        self.keine_werte(r, TOKEN)
+
     def allow(self, zeile):
         (self.repo / "scripts/gate.d/allow.tsv").write_text(f"path\tpattern\treason\n{zeile}\n", encoding="utf-8")
 
