@@ -67,6 +67,7 @@ python3 scripts/setup.py claude             # richtet den lokalen Klon für Clau
 python3 scripts/setup.py --labels claude    # dasselbe, legt zusätzlich fehlende Labels an (einmal je Repo)
 python3 scripts/flow.py validate            # prüft die Prozessdaten unter workflow/
 python3 scripts/flow.py start 42            # Ticket starten (siehe "Zustandswechsel")
+python3 scripts/flow.py review              # Wechsel nach status:in-review, Issue aus dem Branchnamen
 ```
 Unter Windows `py -3 scripts\setup.py …`. Das Setup tut Folgendes (Details in der Spec `repo-setup`):
 
@@ -117,7 +118,8 @@ Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Date
 - `--dry-run` zeigt die Schritte (`git branch …`, `gh issue edit …`) und ändert nichts.
 - Slug: Kleinbuchstaben, Umlaute und `ß` als `ae oe ue ss`, Akzente entfernt, Sonderzeichen werden zu `-`, höchstens 40 Zeichen an einer Wortgrenze; ohne verwertbare Zeichen `issue`.
 - Fehlt `gh`, der GitHub-Remote oder die Anmeldung, gibt es eine Fehlermeldung ohne Traceback. Scheitert das Label, wird der neue Branch wieder gelöscht.
-- `flow review` ist noch nicht umgesetzt.
+
+`python3 scripts/flow.py review [<issue>] [--dry-run]` wechselt von `status:in-progress` nach `status:in-review` (Auslöser `pr_ready` aus `workflow/transitions.tsv`, `guard` ungeprüft). Ohne Nummer gilt der aktuelle Branch (`<typ>/<nr>-<slug>`, z. B. `feature/42-x`); ohne Nummer im Branchnamen und ohne Angabe gibt es eine klare Meldung. Hat das Issue nicht `status:in-progress` (oder ist es geschlossen), Exit-Code 1 mit Nennung des Übergangs, nichts geändert. `--dry-run` zeigt nur das `gh issue edit …`.
 
 ## Teil B: Dieses Repo
 

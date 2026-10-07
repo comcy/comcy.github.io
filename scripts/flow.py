@@ -1,4 +1,4 @@
-"""Befehle für den Prozess: `flow.py validate` prüft die Dateien unter workflow/, `flow.py start <issue>` startet ein Ticket.
+"""Befehle für den Prozess: `flow.py validate` prüft die Dateien unter workflow/, `flow.py start <issue>` startet ein Ticket, `flow.py review [<issue>]` gibt es zum Review.
 
 Aufruf unter Windows: `py -3 scripts\\flow.py validate`. Nur Standardbibliothek, Python 3.11 oder neuer.
 """
@@ -29,8 +29,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_start(args: argparse.Namespace) -> int:
+    return _wechsel(transition.start, args)
+
+
+def cmd_review(args: argparse.Namespace) -> int:
+    return _wechsel(transition.review, args)
+
+
+def _wechsel(funktion, args: argparse.Namespace) -> int:
     try:
-        schritte = transition.start(args.root, args.issue, args.dry_run)
+        schritte = funktion(args.root, args.issue, args.dry_run)
     except proc.SetupError as fehler:
         print(f"Fehler: {fehler}")
         return 1
@@ -54,6 +62,12 @@ def main(argv: list[str] | None = None) -> int:
                    help="Wurzel des Git-Repos (Ordner mit workflow/)")
     s.add_argument("--dry-run", action="store_true", help="Schritte zeigen, nichts ändern")
     s.set_defaults(func=cmd_start)
+    r = sub.add_parser("review", help="status:in-progress -> status:in-review; Issue ggf. aus dem Branchnamen")
+    r.add_argument("issue", nargs="?", help="Nummer des Issues (Standard: aus feature/<nr>-…)")
+    r.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent,
+                   help="Wurzel des Git-Repos (Ordner mit workflow/)")
+    r.add_argument("--dry-run", action="store_true", help="Schritt zeigen, nichts ändern")
+    r.set_defaults(func=cmd_review)
     args = parser.parse_args(argv)
     return args.func(args)
 
