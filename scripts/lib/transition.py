@@ -1,4 +1,4 @@
-"""Zustandswechsel als Befehl: `flow start <issue>` (nur Standardbibliothek).
+"""Zustandswechsel als Befehl: `flow start <issue>` und `flow review [<issue>]` (nur Standardbibliothek).
 
 Erlaubt ist nur, was workflow/transitions.tsv für die Dimension status vorsieht. Die Bedingungen (guard) wertet
 dieser Befehl nicht aus.
@@ -18,6 +18,7 @@ from workflow import STATES_FILE, TRANSITIONS_FILE, WORKFLOW_DIR, is_enabled, re
 
 START_TARGET = "status:in-progress"
 START_TRIGGERS = ("branch_created", "work_started")  # Ereignisse, die ein Start auslösen darf
+REVIEW_FROM, REVIEW_TARGET, REVIEW_TRIGGERS = "status:in-progress", "status:in-review", ("pr_ready",)
 SLUG_MAX = 40
 UMLAUTE = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "Ä": "ae", "Ö": "oe", "Ü": "ue", "ẞ": "ss"})
 
@@ -48,8 +49,8 @@ def git(root: Path, *args: str):
     return proc.run("git", args, cwd=root)
 
 
-def start(root: Path, issue: str, dry_run: bool = False) -> list[str]:
-    """Plant (und führt ohne dry_run aus) Branch und Label; gibt die Schritte als Text zurück. Fehler: SetupError."""
+def lade_issue(root: Path, issue: str) -> tuple[str, list[str]]:
+    """Titel und status-Labels eines offenen Issues (per gh). Fehler: SetupError."""
     antwort = gh(root, "issue", "view", issue, "--json", "title,state,labels")
     if antwort.returncode != 0:
         raise SetupError(f"gh issue view {issue} ist fehlgeschlagen: {antwort.stderr.strip()}")
@@ -64,6 +65,12 @@ def start(root: Path, issue: str, dry_run: bool = False) -> list[str]:
     alt = [n for n in labels if n in status_ids(root)]
     if len(alt) > 1:
         raise SetupError(f"Issue {issue} trägt mehrere status-Labels: {', '.join(alt)}")
+    return titel, alt
+
+
+def start(root: Path, issue: str, dry_run: bool = False) -> list[str]:
+    """Plant (und führt ohne dry_run aus) Branch und Label; gibt die Schritte als Text zurück. Fehler: SetupError."""
+    titel, alt = lade_issue(root, issue)
     von = alt[0] if alt else "-"
     if not allowed(root, von, START_TARGET, START_TRIGGERS):
         raise SetupError(f"Übergang {von} -> {START_TARGET} ist in {WORKFLOW_DIR}/{TRANSITIONS_FILE} nicht erlaubt")
@@ -81,3 +88,29 @@ def start(root: Path, issue: str, dry_run: bool = False) -> list[str]:
             git(root, "branch", "-D", branch)  # zurückrollen: kein Branch ohne Label
             raise SetupError(f"gh issue edit {issue} ist fehlgeschlagen: {gesetzt.stderr.strip()}")
     return schritte
+
+
+def issue_aus_branch(root: Path) -> str:
+    """Issue-Nummer aus dem aktuellen Branch (`<typ>/<nr>-<slug>`). Fehler: SetupError."""
+    name = git(root, "branch", "--show-current").stdout.strip()
+    treffer = re.match(r"[^/]+/(\d+)(?:-|$)", name)
+    if not treffer:
+        raise SetupError(f"Branch '{name or 'detached HEAD'}' enthält keine Issue-Nummer (erwartet z. B. feature/42-x): "
+                         "bitte die Nummer angeben, `flow review <issue>`")
+    return treffer.group(1)
+
+
+def review(root: Path, issue: str | None = None, dry_run: bool = False) -> list[str]:
+    """Wechselt von status:in-progress nach status:in-review; ohne issue aus dem Branchnamen. Fehler: SetupError."""
+    issue = issue or issue_aus_branch(root)
+    _, alt = lade_issue(root, issue)
+    von = alt[0] if alt else "-"
+    if von != REVIEW_FROM or not allowed(root, von, REVIEW_TARGET, REVIEW_TRIGGERS):
+        raise SetupError(f"Übergang {von} -> {REVIEW_TARGET} ist nicht erlaubt (Issue {issue} braucht {REVIEW_FROM} "
+                         f"und einen passenden Eintrag in {WORKFLOW_DIR}/{TRANSITIONS_FILE})")
+    edit = ["issue", "edit", issue, "--add-label", REVIEW_TARGET, "--remove-label", REVIEW_FROM]
+    if not dry_run:
+        gesetzt = gh(root, *edit)
+        if gesetzt.returncode != 0:
+            raise SetupError(f"gh issue edit {issue} ist fehlgeschlagen: {gesetzt.stderr.strip()}")
+    return ["gh " + " ".join(edit)]

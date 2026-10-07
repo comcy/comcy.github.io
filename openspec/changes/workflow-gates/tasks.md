@@ -2,7 +2,7 @@
 - [x] 1.1 `gate commits <bereich>` plus Hook `commit-msg`, Tests am Prozessaufruf, Doku in `docs/workflow.md`
 
 ## 2. Secret-Scan
-- [ ] 2.1 `gate secrets` (Index und Bereich) plus Hook `pre-commit`, Regelliste, Allowlist, Tests (kein Wert in der Ausgabe), Doku
+- [x] 2.1 `gate secrets` (Index und Bereich) plus Hook `pre-commit`, Regelliste, Allowlist, Tests (kein Wert in der Ausgabe), Doku
 
 ## 3. CI-Job
 - [ ] 3.1 Job `gates` in `test.yml` (Commits und Diff des PR), Hinweis zum Branch-Schutz an Repo-Eigner
@@ -12,4 +12,4 @@
 
 ## 5. Zustandswechsel
 - [ ] 5.1 `flow start <issue>` mit `--dry-run`, Tests mit `gh`-Stub
-- [ ] 5.2 `flow review` mit erlaubten Übergängen, Tests
+- [x] 5.2 `flow review` mit erlaubten Übergängen, Tests

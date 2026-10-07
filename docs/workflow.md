@@ -67,6 +67,7 @@ python3 scripts/setup.py claude             # richtet den lokalen Klon für Clau
 python3 scripts/setup.py --labels claude    # dasselbe, legt zusätzlich fehlende Labels an (einmal je Repo)
 python3 scripts/flow.py validate            # prüft die Prozessdaten unter workflow/
 python3 scripts/flow.py start 42            # Ticket starten (siehe "Zustandswechsel")
+python3 scripts/flow.py review              # Wechsel nach status:in-review, Issue aus dem Branchnamen
 ```
 Unter Windows `py -3 scripts\setup.py …`. Das Setup tut Folgendes (Details in der Spec `repo-setup`):
 
@@ -87,6 +88,14 @@ python3 scripts/gate.py commits origin/master..HEAD   # Betreffzeilen eines Bere
 python3 scripts/gate.py commit-msg <datei>            # Nachricht des entstehenden Commits (ruft der Hook auf)
 ```
 Regel: `type(scope)!: Betreff`, Scope und `!` (Breaking) sind optional. Erlaubte Typen: `scripts/gate.d/commit-types.tsv`. Merge-Commits und `Revert "…"` sind erlaubt. Die Meldung nennt Commit, Betreff und Regel. Der Hook `.githooks/commit-msg` enthält keine Logik, er sucht `python3`, `python` oder `py -3` und ruft dieselbe Prüfung auf; die CI soll später dieselben Befehle mit Bereichen aufrufen (Change `workflow-gates`). Der Hook ist nur frühe Rückmeldung (`--no-verify` umgeht ihn), verbindlich ist die CI. Die Autor-Mail wird nicht geprüft.
+
+### Secret-Scan (`scripts/gate.py secrets`)
+
+```
+python3 scripts/gate.py secrets                       # Index (ruft der Hook pre-commit auf)
+python3 scripts/gate.py secrets --range origin/master..HEAD   # Bereich (CI)
+```
+Geprüft werden nur hinzugefügte Zeilen und neue oder geänderte Dateinamen. Regeln: `scripts/gate.d/secrets.tsv` (`id`, `kind` = `line` oder `file`, `pattern` als Python-Regex, `description`): private Schlüssel, bekannte Token-Präfixe, `KEY=`/`PASSWORD=` mit Wert, `.env`-Dateien. Die Meldung nennt Datei, Zeile und Regel, **nie den Wert**. Ausnahmen: `scripts/gate.d/allow.tsv` (`path` als Glob, `pattern` als Regex gegen die Zeile bzw. den Pfad, `reason`); ein Eintrag ohne Grund ist ein Fehler. Statt `--no-verify` also eine begründete Ausnahme eintragen. Tests setzen Testwerte zusammen, damit der Scan die Testdatei nicht trifft.
 
 ### Prozessdaten (`workflow/`)
 
@@ -109,7 +118,8 @@ Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Date
 - `--dry-run` zeigt die Schritte (`git branch …`, `gh issue edit …`) und ändert nichts.
 - Slug: Kleinbuchstaben, Umlaute und `ß` als `ae oe ue ss`, Akzente entfernt, Sonderzeichen werden zu `-`, höchstens 40 Zeichen an einer Wortgrenze; ohne verwertbare Zeichen `issue`.
 - Fehlt `gh`, der GitHub-Remote oder die Anmeldung, gibt es eine Fehlermeldung ohne Traceback. Scheitert das Label, wird der neue Branch wieder gelöscht.
-- `flow review` ist noch nicht umgesetzt.
+
+`python3 scripts/flow.py review [<issue>] [--dry-run]` wechselt von `status:in-progress` nach `status:in-review` (Auslöser `pr_ready` aus `workflow/transitions.tsv`, `guard` ungeprüft). Ohne Nummer gilt der aktuelle Branch (`<typ>/<nr>-<slug>`, z. B. `feature/42-x`); ohne Nummer im Branchnamen und ohne Angabe gibt es eine klare Meldung. Hat das Issue nicht `status:in-progress` (oder ist es geschlossen), Exit-Code 1 mit Nennung des Übergangs, nichts geändert. `--dry-run` zeigt nur das `gh issue edit …`.
 
 ## Teil B: Dieses Repo
 
