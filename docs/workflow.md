@@ -87,7 +87,11 @@ Warum lokal: Claude Code sucht Projekt-Skills nur in `.claude/skills/`, nicht in
 python3 scripts/gate.py commits origin/master..HEAD   # Betreffzeilen eines Bereichs prüfen (Exit-Code 1 bei Verstoß)
 python3 scripts/gate.py commit-msg <datei>            # Nachricht des entstehenden Commits (ruft der Hook auf)
 ```
-Regel: `type(scope)!: Betreff`, Scope und `!` (Breaking) sind optional. Erlaubte Typen: `scripts/gate.d/commit-types.tsv`. Merge-Commits und `Revert "…"` sind erlaubt. Die Meldung nennt Commit, Betreff und Regel. Der Hook `.githooks/commit-msg` enthält keine Logik, er sucht `python3`, `python` oder `py -3` und ruft dieselbe Prüfung auf; die CI soll später dieselben Befehle mit Bereichen aufrufen (Change `workflow-gates`). Der Hook ist nur frühe Rückmeldung (`--no-verify` umgeht ihn), verbindlich ist die CI. Die Autor-Mail wird nicht geprüft.
+Regel: `type(scope)!: Betreff`, Scope und `!` (Breaking) sind optional. Erlaubte Typen: `scripts/gate.d/commit-types.tsv`. Merge-Commits und `Revert "…"` sind erlaubt. Die Meldung nennt Commit, Betreff und Regel. Der Hook `.githooks/commit-msg` enthält keine Logik, er sucht `python3`, `python` oder `py -3` und ruft dieselbe Prüfung auf; die CI ruft im Job `gates` (`.github/workflows/test.yml`) dieselben Befehle für den Bereich `origin/<Basis>..HEAD` auf, Commit-Lint und Secret-Scan. Der Hook ist nur frühe Rückmeldung (`--no-verify` umgeht ihn), verbindlich ist die CI. Die Autor-Mail wird nicht geprüft.
+
+### CI-Job `gates`
+
+Prüft bei jedem Pull Request alle Commits (`gate.py commits`) und den Diff (`gate.py secrets --range`). Auch ein Commit mit `--no-verify` fällt hier auf. Als Pflicht-Check im Branch-Schutz trägt ihn nur der Repo-Eigner ein (`gh api -X PATCH repos/<repo>/branches/master/protection/required_status_checks`, Kontext `gates`).
 
 ### Secret-Scan (`scripts/gate.py secrets`)
 
