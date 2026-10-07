@@ -14,7 +14,7 @@ RUN = REPO / "evals" / "run.py"
 GH_STUB = REPO / "evals" / "gh_stub.py"
 
 FAKE_CLAUDE = '''\
-import json, os, subprocess, sys
+import json, os, shutil, subprocess, sys
 from pathlib import Path
 plan = Path(os.environ["FAKE_PLAN"])
 n_datei = Path(str(plan) + ".n")
@@ -26,7 +26,7 @@ aktion = json.loads(plan.read_text())[n % len(json.loads(plan.read_text()))]
 if aktion == "branch":
     subprocess.run(["git", "branch", "feature/5-x"], check=True)
 elif aktion == "label":
-    subprocess.run(["gh", "issue", "edit", "5", "--add-label", "status:in-progress"], check=True)
+    subprocess.run([shutil.which("gh"), "issue", "edit", "5", "--add-label", "status:in-progress"], check=True)  # which: findet gh.cmd unter Windows
 elif aktion == "login":
     sys.stderr.write("Invalid API key - Please run /login\\n")
     sys.exit(1)
