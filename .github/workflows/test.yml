@@ -37,3 +37,20 @@ jobs:
         run: python -m unittest discover -s tests -p "test_*.py"
       - name: Prozessdaten prüfen
         run: python scripts/flow.py validate
+
+  # Dieselben Prüfungen wie die Git-Hooks, verbindlich für jeden PR (auch bei --no-verify)
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Commit-Lint
+        run: python scripts/gate.py commits "origin/${{ github.base_ref }}..HEAD"
+        if: github.event_name == 'pull_request'
+      - name: Secret-Scan
+        run: python scripts/gate.py secrets --range "origin/${{ github.base_ref }}..HEAD"
+        if: github.event_name == 'pull_request'

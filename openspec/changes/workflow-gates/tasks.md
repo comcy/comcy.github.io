@@ -5,7 +5,7 @@
 - [x] 2.1 `gate secrets` (Index und Bereich) plus Hook `pre-commit`, Regelliste, Allowlist, Tests (kein Wert in der Ausgabe), Doku
 
 ## 3. CI-Job
-- [ ] 3.1 Job `gates` in `test.yml` (Commits und Diff des PR), Hinweis zum Branch-Schutz an Repo-Eigner
+- [x] 3.1 Job `gates` in `test.yml` (Commits und Diff des PR), Hinweis zum Branch-Schutz an Repo-Eigner
 
 ## 4. Setup-Prüfung
 - [x] 4.1 `setup --check` meldet inaktive Hooks bzw. fehlendes `python`, Tests
