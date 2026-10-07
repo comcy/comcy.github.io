@@ -118,12 +118,12 @@ Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Date
 
 `python3 scripts/flow.py start <issue> [--dry-run]` (Windows: `py -3 scripts\flow.py start …`) liest Titel, Zustand und Labels per `gh`, legt den Branch `feature/<id>-<slug>` an (`git branch`, ohne Wechsel des Arbeitsordners) und setzt `status:in-progress`. Das alte `status:`-Label wird entfernt.
 - Erlaubt ist nur ein Übergang nach `status:in-progress` mit Auslöser `branch_created` (kein `status`-Label) oder `work_started` (von `status:in-refinement`) aus `workflow/transitions.tsv`. Sonst Exit-Code 1 mit Nennung des Übergangs, ohne Branch- oder Label-Änderung. Ebenso bei geschlossenem Issue oder vorhandenem Branch.
-- Die Bedingungen (`guard`, z. B. `no_open_blockers`) wertet der Befehl noch nicht aus.
+- Die Bedingungen (`guard`) werden ausgewertet, auch bei `--dry-run`: `label`, `has_label_kind`, `issue_open`, `issue_closed`, `issue_exists`, `no_open_blockers` (`gh api …/dependencies/blocked_by`), `subissues_exist` (`gh api …/sub_issues`), `checks:success` (`gh pr checks` zum aktuellen Branch, kein PR oder nicht alle grün = nicht erfüllt) und `file_exists`. Nicht erfüllt: Exit-Code 1, Meldung nennt den Detektor, nichts geändert. Nicht auswertbar (andere Detektoren, `gh`-Fehler): Warnung auf stderr, der Übergang läuft weiter; ein `--force` gibt es nicht.
 - `--dry-run` zeigt die Schritte (`git branch …`, `gh issue edit …`) und ändert nichts.
 - Slug: Kleinbuchstaben, Umlaute und `ß` als `ae oe ue ss`, Akzente entfernt, Sonderzeichen werden zu `-`, höchstens 40 Zeichen an einer Wortgrenze; ohne verwertbare Zeichen `issue`.
 - Fehlt `gh`, der GitHub-Remote oder die Anmeldung, gibt es eine Fehlermeldung ohne Traceback. Scheitert das Label, wird der neue Branch wieder gelöscht.
 
-`python3 scripts/flow.py review [<issue>] [--dry-run]` wechselt von `status:in-progress` nach `status:in-review` (Auslöser `pr_ready` aus `workflow/transitions.tsv`, `guard` ungeprüft). Ohne Nummer gilt der aktuelle Branch (`<typ>/<nr>-<slug>`, z. B. `feature/42-x`); ohne Nummer im Branchnamen und ohne Angabe gibt es eine klare Meldung. Hat das Issue nicht `status:in-progress` (oder ist es geschlossen), Exit-Code 1 mit Nennung des Übergangs, nichts geändert. `--dry-run` zeigt nur das `gh issue edit …`.
+`python3 scripts/flow.py review [<issue>] [--dry-run]` wechselt von `status:in-progress` nach `status:in-review` (Auslöser `pr_ready` aus `workflow/transitions.tsv`, `guard` wie bei `start`, z. B. `checks:success`). Ohne Nummer gilt der aktuelle Branch (`<typ>/<nr>-<slug>`, z. B. `feature/42-x`); ohne Nummer im Branchnamen und ohne Angabe gibt es eine klare Meldung. Hat das Issue nicht `status:in-progress` (oder ist es geschlossen), Exit-Code 1 mit Nennung des Übergangs, nichts geändert. `--dry-run` zeigt nur das `gh issue edit …`.
 
 ## Teil B: Dieses Repo
 
@@ -193,7 +193,7 @@ Idee: Phasen als Daten beschreiben (Eingang, Ergebnis, Prüfpunkt, Zustandswechs
 ### Umsetzungsreihenfolge (später, jeweils nur bei echtem Bedarf)
 
 1. **Agentenunabhängig und billig:** Git-Hooks über `git config core.hooksPath .githooks` (`commit-msg`: Conventional Commits, `pre-commit`: Secret-Scan), dazu ein CI-Job (Build, Validierung) und Branch-Schutz auf `master`. Wirkt für jede Person und jeden Agenten.
-2. **Skripte:** `scripts/setup.py` (erledigt mit #14, einmaliger Einstieg nach dem Klonen) und danach ein Skript für Zustandswechsel (`scripts/flow.py` kennt `validate`, `start` und `review`, #66/#67): z. B. `scripts/flow start <issue>` legt `feature/<id>-<slug>` an und setzt `status:in-progress`, `scripts/flow review` setzt `status:in-review`. Python mit `gh`, wie `setup.py`. Die `guard`-Bedingungen aus `transitions.tsv` wertet `flow` noch nicht aus (Ticket offen).
+2. **Skripte:** `scripts/setup.py` (erledigt mit #14, einmaliger Einstieg nach dem Klonen) und danach ein Skript für Zustandswechsel (`scripts/flow.py` kennt `validate`, `start` und `review`, #66/#67): z. B. `scripts/flow start <issue>` legt `feature/<id>-<slug>` an und setzt `status:in-progress`, `scripts/flow review` setzt `status:in-review`. Python mit `gh`, wie `setup.py`. Die `guard`-Bedingungen aus `transitions.tsv` wertet `flow` für die per `gh`/Git ermittelbaren Detektoren aus (#75).
 3. **Phasen als Daten:** erledigt als `workflow/*.tsv` (#14), die Labels entstehen daraus, Doku und Diagramm sollen noch daraus erzeugt werden.
 4. **Nachvollziehbarkeit:** Protokoll der Skill-Aufrufe und `gh`-Schreibzugriffe, Testlauf des Prozesses an einer Beispielaufgabe.
 5. **Orchestrierung (nur bei unbeaufsichtigtem Betrieb):** siehe unten.
