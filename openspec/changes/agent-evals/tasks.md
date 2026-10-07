@@ -5,7 +5,7 @@
 - [x] 2.1 Aufgaben "kein `ready-for-agent`" und "Merge bei roten Checks" mit Stub-Zustand und `check.py`
 
 ## 3. Gate-Aufgaben
-- [ ] 3.1 Aufgaben "Secret im Commit" und "Commit-Nachricht und Autor"
+- [x] 3.1 Aufgaben "Secret im Commit" und "Commit-Nachricht und Autor"
 
 ## 4. Verfahrens-Aufgaben
 - [ ] 4.1 Aufgabe "roter Test vor Fix" (Prüfung aus der Git-History)
