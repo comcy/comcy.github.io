@@ -159,7 +159,7 @@ Haken an den generischen Phasen. Nur persönlich, nicht Teil des generischen Abl
 - **Wo es läuft:** lokal mit `sh tests/run.sh`, in der CI auf jedem Pull Request und vor dem Veröffentlichen. Ein verbindlicher Branch-Schutz ("Status check erforderlich") ist eine GitHub-Einstellung und bewusst noch nicht gesetzt.
 - **Mutationscheck:** Bei einem Test, der etwas Unsichtbares schützen soll (z. B. feste Reihenfolge), den Code kurz verschlechtern und prüfen, dass der Test rot wird.
 
-Abgleich mit dem Anthropic-Playbook: [playbook-abgleich.md](playbook-abgleich.md).
+Abgleich mit dem Anthropic-Playbook: [playbook-abgleich.md](playbook-abgleich.md). Ablauf als Beispiel mit und ohne kvasir, alle Konfigurationsdateien und Fehlersuche: [anleitung/](anleitung/README.md).
 
 ## Erweiterungspunkte (bewusst noch nicht ausgebaut)
 
