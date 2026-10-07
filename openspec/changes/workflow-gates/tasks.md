@@ -12,4 +12,4 @@
 
 ## 5. Zustandswechsel
 - [ ] 5.1 `flow start <issue>` mit `--dry-run`, Tests mit `gh`-Stub
-- [ ] 5.2 `flow review` mit erlaubten Übergängen, Tests
+- [x] 5.2 `flow review` mit erlaubten Übergängen, Tests
