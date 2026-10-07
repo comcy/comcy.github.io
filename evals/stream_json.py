@@ -28,3 +28,17 @@ def tool_calls(text):
 
 def nutzt_git_stash(befehl):
     return bool(GIT_STASH.search(befehl))
+
+
+def ergebnis(text):
+    """(Kosten in USD, Dauer in ms) aus dem letzten `result`-Ereignis; fehlende oder unpassende Felder sind None (Format unverifiziert)."""
+    letzt = {}
+    for zeile in text.splitlines():
+        try:
+            e = json.loads(zeile)
+        except ValueError:
+            continue
+        if isinstance(e, dict) and e.get("type") == "result":
+            letzt = e
+    zahl = lambda w: w if isinstance(w, (int, float)) and not isinstance(w, bool) else None  # noqa: E731
+    return zahl(letzt.get("total_cost_usd")), zahl(letzt.get("duration_ms"))

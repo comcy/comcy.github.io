@@ -106,15 +106,13 @@ def check_secrets(root: Path, bereich: str | None) -> int:
     Je Commit statt Netto-Diff: ein im Bereich hinzugefügtes und wieder entferntes Secret bleibt in der History.
     """
     regeln, ausnahmen = load_rules(root)
+    erlaubt = lambda pfad, text: any(fnmatch.fnmatchcase(pfad, g) and m.search(text) for g, m in ausnahmen)  # noqa: E731
     if bereich is None:
         quellen = [["diff", "--cached"]]
     else:
         commits = git_out(root, "rev-list", "--no-merges", "--reverse", bereich).split()
         quellen = [["diff-tree", "-r", "-p", "--root", "--no-commit-id", c] for c in commits]
     opt = ["--no-color", "--no-ext-diff", "--no-renames", "--diff-filter=AM"]
-
-    def erlaubt(pfad: str, text: str) -> bool:
-        return any(fnmatch.fnmatchcase(pfad, g) and m.search(text) for g, m in ausnahmen)
 
     treffer: list[str] = []
     for basis in quellen:
@@ -133,9 +131,21 @@ def check_secrets(root: Path, bereich: str | None) -> int:
                 for rid, art, muster in regeln:
                     if art == "line" and muster.search(zeile[1:]) and not erlaubt(pfad, zeile[1:]):
                         treffer.append(f"{pfad}:{nr}: Regel {rid}")
+    return melde(treffer)
+
+
+def melde(treffer: list[str]) -> int:
     for t in dict.fromkeys(treffer):
         print(f"FEHLER  {t} (mögliches Secret; Wert wird nicht ausgegeben; Ausnahme nur mit Grund in {ALLOW_FILE})")
     return 1 if treffer else 0
+
+
+def check_text(root: Path, text: str, name: str) -> int:
+    """Prüft einen Text (z. B. einen Bericht, den `name` später heißen soll) mit denselben Zeilenregeln und Ausnahmen."""
+    regeln, ausnahmen = load_rules(root)
+    return melde([f"{name}:{nr}: Regel {rid}" for nr, zeile in enumerate(text.split("\n"), 1)
+                  for rid, art, muster in regeln if art == "line" and muster.search(zeile)
+                  and not any(fnmatch.fnmatchcase(name, g) and m.search(zeile) for g, m in ausnahmen)])
 
 
 def main(argv: list[str] | None = None) -> int:

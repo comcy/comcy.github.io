@@ -13,6 +13,7 @@ import dataclasses
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -27,6 +28,9 @@ sys.path.insert(0, str(HIER))
 import proc  # noqa: E402
 from proc import SetupError  # noqa: E402
 import stream_json  # noqa: E402
+
+sys.path.insert(0, str(REPO / "scripts"))
+import gate  # noqa: E402
 
 FIXTURE = ["AGENTS.md", "docs/agents", "workflow", "scripts", ".githooks", "openspec/config.yaml", ".agents/skills"]
 TOOLS = "Bash Read Edit Write Glob Grep"
@@ -128,7 +132,7 @@ def lade_modul(aufgabe):
 
 
 def lauf(aufgabe, work, args, base_env):
-    """Ein Lauf; Rückgabe: Liste der Prüffehler (leer = bestanden)."""
+    """Ein Lauf; Rückgabe: (Prüffehler (leer = bestanden), Kosten USD oder None, Dauer ms oder None)."""
     repo, env = baue_lauf(aufgabe, work, base_env)
     prompt = (aufgabe / "prompt.md").read_text(encoding="utf-8").strip()
     agent = starte_agent(prompt, repo, env, args.model, args.budget)
@@ -139,17 +143,49 @@ def lauf(aufgabe, work, args, base_env):
     ctx = Ctx(repo, "master", json.loads((work / "state.json").read_text(encoding="utf-8")),
               [json.loads(z) for z in protokoll.read_text(encoding="utf-8").splitlines()] if protokoll.exists() else [],
               stream_json.tool_calls(agent.stdout), agent)
-    return lade_modul(aufgabe).check(ctx)
+    return (lade_modul(aufgabe).check(ctx), *stream_json.ergebnis(agent.stdout))
 
 
-def bericht(ergebnisse, runs, commit):
-    zeilen = [f"# Eval-Bericht {datetime.now():%Y-%m-%d %H:%M}", "",
-              f"Commit {commit}, {runs} Läufe je Aufgabe, bestanden ab {runs // 2 + 1}.", "",
-              "| Aufgabe | Läufe | Ergebnis | Erste fehlgeschlagene Prüfung |", "| --- | --- | --- | --- |"]
-    for name, fehlerlisten in ergebnisse.items():
-        ok = sum(1 for f in fehlerlisten if not f)
-        erste = next((f[0] for f in fehlerlisten if f), "")
-        zeilen.append(f"| {name} | {ok}/{runs} | {'bestanden' if ok >= runs // 2 + 1 else 'durchgefallen'} | {erste} |")
+def bestanden(ok, runs):
+    return ok >= runs // 2 + 1
+
+
+def frueherer(ordner, ohne):
+    """(Dateiname, Text) des letzten Berichts im Ordner außer `ohne`, sonst None."""
+    alt = [p for p in sorted(ordner.glob("*.md")) if p.name != ohne] if ordner.is_dir() else []
+    return (alt[-1].name, alt[-1].read_text(encoding="utf-8")) if alt else None
+
+
+def bericht(ergebnisse, runs, commit, modell, jetzt, vorher=None):
+    """Markdown-Bericht. ergebnisse: {aufgabe: [(fehler, kosten, dauer_ms), …]}; vorher: (dateiname, text) des letzten Berichts."""
+    usd = lambda w: "$%.4f" % w if w else "-"  # noqa: E731
+    kosten = [l[1] for ls in ergebnisse.values() for l in ls if l[1] is not None]
+    dauer = [l[2] for ls in ergebnisse.values() for l in ls if l[2] is not None]
+    zeilen = [f"# Eval-Bericht {jetzt:%Y-%m-%d %H:%M}", "", f"- Commit: {commit}", f"- Modell: {modell or 'Standard'}",
+              f"- Läufe: {runs} je Aufgabe, bestanden ab {runs // 2 + 1}",
+              f"- Kosten: {'$%.4f' % sum(kosten) if kosten else 'unbekannt'}",
+              f"- Dauer: {'%d s' % round(sum(dauer) / 1000) if dauer else 'unbekannt'}", "",
+              "| Aufgabe | Läufe | Ergebnis | Kosten | Erste fehlgeschlagene Prüfung |", "| --- | --- | --- | --- | --- |"]
+    jetzt_ok, auffaellig = {}, []
+    for name, laeufe in ergebnisse.items():
+        ok = sum(1 for l in laeufe if not l[0])
+        erste = next((l[0][0] for l in laeufe if l[0]), "")
+        jetzt_ok[name] = bestanden(ok, runs)
+        zeilen.append(f"| {name} | {ok}/{runs} | {'bestanden' if jetzt_ok[name] else 'durchgefallen'} | "
+                      f"{usd(sum(l[1] or 0 for l in laeufe))} | {erste or '-'} |")
+        if erste:
+            auffaellig.append(f"- {name}: {runs - ok} von {runs} Läufen fehlgeschlagen, erste Prüfung: {erste}")
+    quoten = ", ".join(str(round(100 * sum(1 for l in ls if not l[0]) / runs)) for ls in ergebnisse.values())
+    namen = ", ".join('"%s"' % n for n in ergebnisse)
+    zeilen += ["", "## Bestehensquote", "", "```mermaid", "xychart-beta", '    title "Bestehensquote je Aufgabe (%)"',
+               f"    x-axis [{namen}]", '    y-axis "Prozent" 0 --> 100', f"    bar [{quoten}]", "```"]
+    if vorher:
+        alt = dict(re.findall(r"^\| (\S+) \| \d+/\d+ \| (bestanden|durchgefallen) \|", vorher[1], re.M))
+        rot = [n for n, b in jetzt_ok.items() if not b and alt.get(n) == "bestanden"]
+        gruen = [n for n, b in jetzt_ok.items() if b and alt.get(n) == "durchgefallen"]
+        zeilen += ["", f"## Vergleich zum letzten Bericht ({vorher[0]})", "",
+                   f"- Neu rot: {', '.join(rot) or 'keine'}", f"- Neu grün: {', '.join(gruen) or 'keine'}"]
+    zeilen += ["", "## Auffälligkeiten", ""] + (auffaellig or ["- keine"])
     return "\n".join(zeilen) + "\n"
 
 
@@ -160,13 +196,15 @@ def main(argv=None):
     p.add_argument("--runs", type=int, default=3)
     p.add_argument("--model")
     p.add_argument("--budget", type=float, default=1.0, help="USD je Lauf (--max-budget-usd)")
+    p.add_argument("--zeit", type=datetime.fromisoformat, default=None, help="Zeitstempel fixieren (für Tests), z. B. 2026-03-04T05:06")
     p.add_argument("--out", type=Path, default=HIER, help="Ausgabeordner für reports/ und runs/")
     args = p.parse_args(argv)
     try:
         if proc.find("claude") is None:
             raise SetupError("claude nicht gefunden: Claude Code installieren und anmelden")
         ergebnisse = {}
-        stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+        jetzt = args.zeit or datetime.now()
+        stamp = jetzt.strftime("%Y-%m-%d-%H%M%S")
         with tempfile.TemporaryDirectory(prefix="evals-") as tmp:
             for aufgabe in aufgaben(args.aufgaben):
                 ergebnisse[aufgabe.name] = []
@@ -178,13 +216,15 @@ def main(argv=None):
                     roh.mkdir(parents=True)
                     shutil.copy2(work / "agent.out", roh / "agent.out")
         commit = git(REPO, "rev-parse", "--short", "HEAD").strip()
-        text = bericht(ergebnisse, args.runs, commit)
         ziel = args.out / "reports" / f"{stamp[:-2]}.md"
+        text = bericht(ergebnisse, args.runs, commit, args.model, jetzt, frueherer(ziel.parent, ziel.name))
+        if gate.check_text(REPO, text, ziel.relative_to(args.out).as_posix()):
+            raise SetupError("Bericht enthält ein mögliches Secret und wurde nicht geschrieben (Rohdaten: %s)" % (args.out / "runs" / stamp))
         ziel.parent.mkdir(parents=True, exist_ok=True)
         ziel.write_text(text, encoding="utf-8")
         print(text)
         print("Bericht:", ziel)
-        return 0 if all(sum(1 for f in fl if not f) >= args.runs // 2 + 1 for fl in ergebnisse.values()) else 1
+        return 0 if all(bestanden(sum(1 for l in ls if not l[0]), args.runs) for ls in ergebnisse.values()) else 1
     except SetupError as fehler:
         print("Fehler:", fehler, file=sys.stderr)
         return 2
