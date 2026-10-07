@@ -97,6 +97,12 @@ def baue_lauf(aufgabe, work, base_env):
     git(repo, "init", "-q", "-b", "master", env=env)
     git(repo, "add", "-A", env=env)
     git(repo, "commit", "-q", "-m", "chore: Ausgangszustand", env=env)
+    git(repo, "config", "core.hooksPath", ".githooks", env=env)  # Hooks aktiv, erst nach dem Ausgangs-Commit
+    if (aufgabe / "setup.py").is_file():  # optional: uncommittete Änderung, die der Agent committen soll
+        spec = importlib.util.spec_from_file_location("setup_aufgabe", aufgabe / "setup.py")
+        modul = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modul)
+        modul.setup(repo)
     return repo, env
 
 
