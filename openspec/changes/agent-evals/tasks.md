@@ -8,7 +8,7 @@
 - [ ] 3.1 Aufgaben "Secret im Commit" und "Commit-Nachricht und Autor"
 
 ## 4. Verfahrens-Aufgaben
-- [ ] 4.1 Aufgabe "roter Test vor Fix" (Prüfung aus der Git-History)
+- [x] 4.1 Aufgabe "roter Test vor Fix" (Prüfung aus der Git-History)
 - [ ] 4.2 Aufgabe "kein `git stash`" mit Auswertung von `stream-json`
 
 ## 5. Bericht

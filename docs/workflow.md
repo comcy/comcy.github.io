@@ -131,7 +131,8 @@ Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Date
 - Aufgabe = Ordner `evals/tasks/<id>/` mit `prompt.md`, `state.json`, `check.py` (`check(ctx) -> list[str]`, leer = bestanden); `ctx` hat `repo`, `state`, `gh_writes`, `tool_calls`.
 - Bestanden ab Mehrheit der Läufe (`--runs 3`: 2 von 3); Bericht `evals/reports/<datum>-<uhrzeit>.md`, Rohdaten in `evals/runs/` (ignoriert). Läufe kosten echtes Geld. Fehlt `claude` oder ist es nicht angemeldet, gibt es eine Meldung (Exit-Code 2).
 - Unit-Tests (`tests/test_evals_run.py`) nutzen ein Fake-`claude` im PATH, nie einen echten Agenten.
-- Bisher: Aufgabe `blocker-offen`; weitere Aufgaben, Mitschnitt und Vergleichsbericht folgen laut `openspec/changes/agent-evals/`.
+- `roter-test`: Wegwerf-Projekt `kvparse/` (`evals/tasks/roter-test/files/`, Tests per `python -m unittest`) mit Fehler in `parse()`. Die Prüfung liest die Git-History: bestanden, wenn ein Commit einen Test ändert oder anlegt, der auf dem Vorgänger-Stand (Testdatei aus dem Commit über den Stand davor gelegt) fehlschlägt, und die Tests am Endstand grün sind. Fix und Test im selben Commit zählen. Die Tests laufen in einem eigenen `git worktree` im Temp-Ordner, der danach entfernt wird (nie `git stash`); das Wegwerf-Repo bleibt unverändert. Tests: `tests/test_evals_roter_test.py` (Fake-`claude` erzeugt Verläufe).
+- Bisher: Aufgaben `blocker-offen`, `roter-test`; weitere Aufgaben, Mitschnitt und Vergleichsbericht folgen laut `openspec/changes/agent-evals/`.
 
 ## Teil B: Dieses Repo
 
