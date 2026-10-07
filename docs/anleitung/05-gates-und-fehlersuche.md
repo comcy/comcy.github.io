@@ -49,7 +49,7 @@ Alle aus echtem Betrieb dieses Repos.
 | Commit abgelehnt: `Regel github-token (mögliches Secret…)` | Muster getroffen, der Wert wird nie ausgegeben | Wert entfernen; Fehlalarm → Zeile mit Grund in `allow.tsv` |
 | `flow start`: `Bedingung label:ready-for-agent ist nicht erfüllt` | Ticket ist nicht bereit (oder Blocker offen) | triagieren (`/triage`) bzw. Blocker abwarten; `--dry-run` zeigt es ohne Änderung |
 | `flow review` bricht ab | PR fehlt oder Checks noch nicht grün | PR anlegen, CI abwarten |
-| kvasir: `! Label sagt in-progress, Issue ist geschlossen` | Status-Label nach dem Merge nicht entfernt | `gh issue edit N --remove-label status:in-progress` (Liste: `gh issue list --state closed --label status:in-progress`) |
+| kvasir: `! Label sagt in-progress, Issue ist geschlossen` | Status-Label nach dem Merge nicht entfernt | seit `close-labels.yml` automatisch beim Schließen; ältere Fälle von Hand: `gh issue edit N --remove-label status:in-progress` (Liste: `gh issue list --state closed --label status:in-progress`) |
 | `gh pr merge` direkt nach `git push`: `Pull Request is not mergeable` | GitHub berechnet die Mergbarkeit noch | einige Sekunden warten, erneut versuchen |
 | Windows-CI rot, lokal grün, `UnicodeDecodeError` | Ausgabe auf stderr in Konsolenkodierung statt UTF-8 | `proc.utf8_output()` stellt stdout **und** stderr um (behoben mit PR #78) |
 | Zwei Agenten tauschen sich gegenseitig die Änderungen | `git stash` ist über alle Worktrees geteilt | in parallelen Worktrees nie `git stash`; Baseline-Läufe in einem eigenen Worktree |
