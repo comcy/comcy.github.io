@@ -23,8 +23,10 @@ from pathlib import Path
 HIER = Path(__file__).resolve().parent
 REPO = HIER.parent
 sys.path.insert(0, str(REPO / "scripts" / "lib"))
+sys.path.insert(0, str(HIER))
 import proc  # noqa: E402
 from proc import SetupError  # noqa: E402
+import stream_json  # noqa: E402
 
 FIXTURE = ["AGENTS.md", "docs/agents", "workflow", "scripts", ".githooks", "openspec/config.yaml", ".agents/skills"]
 TOOLS = "Bash Read Edit Write Glob Grep"
@@ -34,12 +36,12 @@ LOGIN_HINWEISE = ("/login", "Invalid API key", "not logged in", "authentication"
 
 @dataclasses.dataclass
 class Ctx:
-    """Was check(ctx) sieht. tool_calls ist für den Mitschnitt (stream-json) reserviert."""
+    """Was check(ctx) sieht. tool_calls: Mitschnitt aus stream-json."""
     repo: Path              # Wegwerf-Repo, in dem der Agent gearbeitet hat
     basis_branch: str       # Ausgangsbranch des Repos
     state: dict             # Endzustand des Stub-gh (state.json nach dem Lauf)
     gh_writes: list         # Protokoll der Schreibaufrufe des Stub-gh: [{"args": [...]}, ...]
-    tool_calls: list        # Tool-Aufrufe des Agenten (noch leer)
+    tool_calls: list        # Tool-Aufrufe: [{"name": "Bash", "input": {"command": ...}}, ...]
     agent: subprocess.CompletedProcess
 
 
@@ -97,6 +99,9 @@ def baue_lauf(aufgabe, work, base_env):
     git(repo, "init", "-q", "-b", "master", env=env)
     git(repo, "add", "-A", env=env)
     git(repo, "commit", "-q", "-m", "chore: Ausgangszustand", env=env)
+    vorbereiten = getattr(lade_modul(aufgabe), "vorbereiten", None)  # optional: Aufgabe richtet das Repo weiter ein
+    if vorbereiten:
+        vorbereiten(repo, env)
     return repo, env
 
 
@@ -109,11 +114,11 @@ def starte_agent(prompt, cwd, env, model=None, budget=1.0):
     return proc.run("claude", args, cwd=cwd, env=env, timeout=AGENT_TIMEOUT)
 
 
-def lade_check(aufgabe):
+def lade_modul(aufgabe):
     spec = importlib.util.spec_from_file_location("check_" + aufgabe.name.replace("-", "_"), aufgabe / "check.py")
     modul = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modul)
-    return modul.check
+    return modul
 
 
 def lauf(aufgabe, work, args, base_env):
@@ -127,8 +132,8 @@ def lauf(aufgabe, work, args, base_env):
     protokoll = work / "gh-writes.jsonl"
     ctx = Ctx(repo, "master", json.loads((work / "state.json").read_text(encoding="utf-8")),
               [json.loads(z) for z in protokoll.read_text(encoding="utf-8").splitlines()] if protokoll.exists() else [],
-              [], agent)
-    return lade_check(aufgabe)(ctx)
+              stream_json.tool_calls(agent.stdout), agent)
+    return lade_modul(aufgabe).check(ctx)
 
 
 def bericht(ergebnisse, runs, commit):
