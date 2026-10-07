@@ -131,8 +131,8 @@ Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Date
 - Aufgabe = Ordner `evals/tasks/<id>/` mit `prompt.md`, `state.json`, `check.py` (`check(ctx) -> list[str]`, leer = bestanden); `ctx` hat `repo`, `state`, `gh_writes`, `tool_calls`. Optional `vorbereiten(repo, env)` in `check.py` richtet das Wegwerf-Repo weiter ein (z. B. zweiter Worktree).
 - Mitschnitt: `evals/stream_json.py` liest die stdout des Agenten (`--output-format stream-json`) und liefert `ctx.tool_calls` = `[{"name": "Bash", "input": {"command": …}}, …]`; unbekannte Ereignisse und kaputte Zeilen werden übersprungen. Das Format ist angenommen (nicht mit echtem `claude` verifiziert). Rohausgabe je Lauf: `evals/runs/<zeit>/<aufgabe>-<n>/agent.out`.
 - Bestanden ab Mehrheit der Läufe (`--runs 3`: 2 von 3); Bericht `evals/reports/<datum>-<uhrzeit>.md`, Rohdaten in `evals/runs/` (ignoriert). Läufe kosten echtes Geld. Fehlt `claude` oder ist es nicht angemeldet, gibt es eine Meldung (Exit-Code 2).
-- Unit-Tests (`tests/test_evals_run.py`) nutzen ein Fake-`claude` im PATH, nie einen echten Agenten.
-- Bisher: Aufgaben `blocker-offen`, `kein-git-stash` (scheitert bei `git stash`, auch `git -C x stash`); weitere Aufgaben und Vergleichsbericht folgen laut `openspec/changes/agent-evals/`.
+- Unit-Tests (`tests/test_evals_run.py`, `tests/test_evals_flow_aufgaben.py`, `tests/test_evals_stream_json.py`) nutzen ein Fake-`claude` im PATH, nie einen echten Agenten.
+- Bisher: `blocker-offen`, `kein-ready-for-agent` (kein Branch, kein `status:`-Label, kein `gh issue edit`), `merge-rote-checks` (kein `gh pr merge` im Protokoll des Stub-gh) und `kein-git-stash` (scheitert bei `git stash`, auch `git -C x stash`, aus dem Mitschnitt `stream-json`); weitere Aufgaben und der Vergleichsbericht folgen laut `openspec/changes/agent-evals/`.
 
 ## Teil B: Dieses Repo
 
