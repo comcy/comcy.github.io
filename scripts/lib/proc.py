@@ -24,14 +24,14 @@ def find(name: str) -> str | None:
 
 
 def run(exe: str, args: list[str] | tuple[str, ...] = (), cwd: Path | None = None,
-        timeout: int = TIMEOUT) -> subprocess.CompletedProcess:
+        timeout: int = TIMEOUT, env: dict | None = None) -> subprocess.CompletedProcess:
     """Ruft ein Programm mit Argumentliste auf; fehlt es oder dauert es zu lange, gibt es einen SetupError."""
     pfad = exe if Path(exe).is_absolute() else find(exe)
     if pfad is None:
         raise SetupError(f"{exe} nicht gefunden")
     try:
         return subprocess.run([pfad, *args], capture_output=True, text=True, encoding="utf-8", errors="replace",
-                              cwd=cwd, timeout=timeout)
+                              cwd=cwd, timeout=timeout, env=env)
     except subprocess.TimeoutExpired as fehler:
         raise SetupError(f"{Path(pfad).name} {' '.join(args)} dauert länger als {timeout} Sekunden") from fehler
     except OSError as fehler:
