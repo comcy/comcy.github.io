@@ -2,7 +2,7 @@
 - [x] 1.1 Runner `evals/run.py` mit Aufgabe "Blocker offen" (Aufgabe 1) und minimalem Bericht; Runner-Test mit einem Fake-`claude` (kein echter Agent in den Unit-Tests), Isolation und Schreibschutz belegt
 
 ## 2. Flow-Aufgaben
-- [ ] 2.1 Aufgaben "kein `ready-for-agent`" und "Merge bei roten Checks" mit Stub-Zustand und `check.py`
+- [x] 2.1 Aufgaben "kein `ready-for-agent`" und "Merge bei roten Checks" mit Stub-Zustand und `check.py`
 
 ## 3. Gate-Aufgaben
 - [ ] 3.1 Aufgaben "Secret im Commit" und "Commit-Nachricht und Autor"
