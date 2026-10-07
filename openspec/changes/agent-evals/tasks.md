@@ -15,4 +15,4 @@
 - [x] 5.1 Vollständiger Bericht: Tabelle, Mermaid-Diagramm, Vergleich zum letzten Lauf, Auffälligkeiten, Secret-Scan, `.gitignore` für `evals/runs/`
 
 ## 6. Doku und Probelauf
-- [ ] 6.1 Doku in `docs/workflow.md` und `docs/anleitung/05`; erster echter Lauf mit kleinem Budget, Bericht eingecheckt
+- [x] 6.1 (Doku) Doku in `docs/workflow.md` und `docs/anleitung/05`; erster echter Lauf mit kleinem Budget, Bericht eingecheckt
