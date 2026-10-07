@@ -5,5 +5,5 @@ for py in python3 python; do
   "$py" -c "" >/dev/null 2>&1 && exec "$py" "$dir/../scripts/gate.py" commit-msg "$1"
 done
 py -3 -c "" >/dev/null 2>&1 && exec py -3 "$dir/../scripts/gate.py" commit-msg "$1"
-echo "gate: Python 3.11 oder neuer nicht gefunden (python3, python, py -3)" >&2
+echo "gate: Python nicht gefunden (python3, python, py -3; benötigt wird 3.11 oder neuer)" >&2
 exit 1

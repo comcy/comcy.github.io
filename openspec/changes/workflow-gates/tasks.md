@@ -11,5 +11,5 @@
 - [x] 4.1 `setup --check` meldet inaktive Hooks bzw. fehlendes `python`, Tests
 
 ## 5. Zustandswechsel
-- [ ] 5.1 `flow start <issue>` mit `--dry-run`, Tests mit `gh`-Stub
+- [x] 5.1 `flow start <issue>` mit `--dry-run`, Tests mit `gh`-Stub
 - [x] 5.2 `flow review` mit erlaubten Übergängen, Tests

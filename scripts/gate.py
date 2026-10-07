@@ -101,30 +101,38 @@ def git_out(root: Path, *args: str) -> str:
 
 
 def check_secrets(root: Path, bereich: str | None) -> int:
-    """Prüft hinzugefügte Zeilen und Dateinamen (Index oder Bereich); meldet Datei, Zeile und Regel, nie den Wert."""
+    """Prüft hinzugefügte Zeilen und Dateinamen (Index oder jeder Commit des Bereichs); meldet Datei, Zeile und Regel, nie den Wert.
+
+    Je Commit statt Netto-Diff: ein im Bereich hinzugefügtes und wieder entferntes Secret bleibt in der History.
+    """
     regeln, ausnahmen = load_rules(root)
-    basis = ["diff", "--cached"] if bereich is None else ["diff", bereich]
-    basis += ["--no-color", "--no-ext-diff", "--no-renames", "--diff-filter=AM"]
+    if bereich is None:
+        quellen = [["diff", "--cached"]]
+    else:
+        commits = git_out(root, "rev-list", "--no-merges", "--reverse", bereich).split()
+        quellen = [["diff-tree", "-r", "-p", "--root", "--no-commit-id", c] for c in commits]
+    opt = ["--no-color", "--no-ext-diff", "--no-renames", "--diff-filter=AM"]
 
     def erlaubt(pfad: str, text: str) -> bool:
         return any(fnmatch.fnmatchcase(pfad, g) and m.search(text) for g, m in ausnahmen)
 
     treffer: list[str] = []
-    for pfad in filter(None, git_out(root, *basis, "--name-only", "-z").split("\x00")):
-        for rid, art, muster in regeln:
-            if art == "file" and muster.search(pfad) and not erlaubt(pfad, pfad):
-                treffer.append(f"{pfad}: Regel {rid}")
-    pfad, nr = "", 0
-    for zeile in git_out(root, *basis, "-U0").split("\n"):
-        if zeile.startswith("+++ "):
-            pfad = zeile[6:].split("\t")[0] if zeile.startswith("+++ b/") else ""
-        elif zeile.startswith("@@"):
-            nr = int(re.search(r"\+(\d+)", zeile).group(1)) - 1
-        elif zeile.startswith("+") and pfad:
-            nr += 1
+    for basis in quellen:
+        for pfad in filter(None, git_out(root, *basis, *opt, "--name-only", "-z").split("\x00")):
             for rid, art, muster in regeln:
-                if art == "line" and muster.search(zeile[1:]) and not erlaubt(pfad, zeile[1:]):
-                    treffer.append(f"{pfad}:{nr}: Regel {rid}")
+                if art == "file" and muster.search(pfad) and not erlaubt(pfad, pfad):
+                    treffer.append(f"{pfad}: Regel {rid}")
+        pfad, nr = "", 0
+        for zeile in git_out(root, *basis, *opt, "-U0").split("\n"):
+            if zeile.startswith("+++ "):
+                pfad = zeile[6:].split("\t")[0] if zeile.startswith("+++ b/") else ""
+            elif zeile.startswith("@@"):
+                nr = int(re.search(r"\+(\d+)", zeile).group(1)) - 1
+            elif zeile.startswith("+") and pfad:
+                nr += 1
+                for rid, art, muster in regeln:
+                    if art == "line" and muster.search(zeile[1:]) and not erlaubt(pfad, zeile[1:]):
+                        treffer.append(f"{pfad}:{nr}: Regel {rid}")
     for t in dict.fromkeys(treffer):
         print(f"FEHLER  {t} (mögliches Secret; Wert wird nicht ausgegeben; Ausnahme nur mit Grund in {ALLOW_FILE})")
     return 1 if treffer else 0
