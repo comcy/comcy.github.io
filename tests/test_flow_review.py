@@ -15,7 +15,8 @@ class FlowReview(MitRepo):
     def issue(self, labels=()):
         antwort = {"title": "T", "state": "OPEN", "labels": [{"name": n} for n in labels]}
         self.stubs.add("gh", "gh version 2.50.0", responses=[
-            {"args": ["issue", "view"], "stdout": json.dumps(antwort)}, {"args": ["issue", "edit"]}])
+            {"args": ["issue", "view"], "stdout": json.dumps(antwort)}, {"args": ["issue", "edit"]},
+            {"args": ["pr", "checks"], "stdout": '[{"bucket": "pass"}]'}])  # guard checks:success erfüllt
 
     def edits(self):
         return [a["args"] for a in self.aufrufe("gh", "issue") if a["args"][1:2] == ["edit"]]

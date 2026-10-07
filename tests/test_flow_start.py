@@ -16,10 +16,12 @@ class FlowStart(MitRepo):
                         "commit", "--allow-empty", "-q", "-m", "init"], check=True)
 
     def issue(self, titel="Mein Ticket", labels=(), state="OPEN", view_code=0, view_stderr=""):
-        antwort = {"title": titel, "state": state, "labels": [{"name": n} for n in labels]}
+        antwort = {"title": titel, "state": state, "labels": [{"name": n} for n in ("ready-for-agent", *labels)]}
         self.stubs.add("gh", "gh version 2.50.0", responses=[
             {"args": ["issue", "view"], "stdout": json.dumps(antwort), "code": view_code, "stderr": view_stderr},
-            {"args": ["issue", "edit"]}])
+            {"args": ["issue", "edit"]},
+            {"args": ["api", "repos/{owner}/{repo}/issues/42/sub_issues"], "stdout": '[{"state": "open"}]'},
+            {"args": ["api"], "stdout": "[]"}])  # keine Blocker; Guards sind erfüllt (siehe test_flow_guards.py)
 
     def branches(self):
         r = subprocess.run(["git", "-C", str(self.repo), "branch", "--list", "feature/*", "--format=%(refname:short)"],
