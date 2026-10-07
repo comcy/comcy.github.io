@@ -11,6 +11,7 @@ from stubs import Stubs
 
 REPO = Path(__file__).resolve().parent.parent
 SETUP = REPO / "scripts" / "setup.py"
+FLOW = REPO / "scripts" / "flow.py"
 
 ALLE = {"git": "git version 2.45.1", "gh": "gh version 2.50.0 (2026-01-01)", "node": "v22.4.0",
         "openspec": "1.14.0", "pandoc": "pandoc 3.1.3", "kvasir": "kvasir 0.3.0"}
@@ -83,6 +84,13 @@ class MitRepo(unittest.TestCase):
             (self.stubs.dir / (f"{name}.cmd" if sys.platform == "win32" else name)).unlink()
         return subprocess.run([sys.executable, str(SETUP), "--root", str(self.repo), *args], capture_output=True,
                               text=True, encoding="utf-8", env=self.stubs.env(), cwd=cwd)
+
+    def run_flow(self, *args, entfernen=()):
+        """Ruft flow.py als Prozess auf (Repo = temporäres Repo, Programme = Stubs)."""
+        for name in entfernen:
+            (self.stubs.dir / (f"{name}.cmd" if sys.platform == "win32" else name)).unlink()
+        return subprocess.run([sys.executable, str(FLOW), *args[:1], "--root", str(self.repo), *args[1:]],
+                              capture_output=True, text=True, encoding="utf-8", env=self.stubs.env())
 
     def git_config(self, schluessel):
         r = subprocess.run(["git", "-C", str(self.repo), "config", "--local", "--get", schluessel],

@@ -66,6 +66,7 @@ python3 scripts/setup.py --check            # prüft, ändert nichts (Exit-Code 
 python3 scripts/setup.py claude             # richtet den lokalen Klon für Claude Code ein
 python3 scripts/setup.py --labels claude    # dasselbe, legt zusätzlich fehlende Labels an (einmal je Repo)
 python3 scripts/flow.py validate            # prüft die Prozessdaten unter workflow/
+python3 scripts/flow.py start 42            # Ticket starten (siehe "Zustandswechsel")
 ```
 Unter Windows `py -3 scripts\setup.py …`. Das Setup tut Folgendes (Details in der Spec `repo-setup`):
 
@@ -99,6 +100,16 @@ Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Date
 | `detectors.tsv` | das feste Vokabular der Bedingungen mit Argumentform (`-`, `text`, `path`, `enum:a|b|c`) |
 
 `python3 scripts/flow.py validate` prüft Spalten, Eindeutigkeit, Verweise, Dimensionen (Übergänge nur innerhalb einer Dimension, außer vom Start oder zu `closed`) und das Vokabular; Warnungen (abgeschaltete Verweise, Sackgassen, Phasenreihenfolge) werden mit `--strict` zu Fehlern. Es läuft in jedem Pull Request. Die Dateien enthalten nie Code, ausgewertet wird im Werkzeug. Ein Wechsel auf JSON oder YAML wäre lokal im Leser (`scripts/lib/workflow.py`) möglich, sobald ODER-Bedingungen, mehr als etwa acht Eigenschaften je Schritt oder Tab-Fehler es nötig machen.
+
+### Zustandswechsel (`flow start`)
+
+`python3 scripts/flow.py start <issue> [--dry-run]` (Windows: `py -3 scripts\flow.py start …`) liest Titel, Zustand und Labels per `gh`, legt den Branch `feature/<id>-<slug>` an (`git branch`, ohne Wechsel des Arbeitsordners) und setzt `status:in-progress`. Das alte `status:`-Label wird entfernt.
+- Erlaubt ist nur ein Übergang nach `status:in-progress` mit Auslöser `branch_created` (kein `status`-Label) oder `work_started` (von `status:in-refinement`) aus `workflow/transitions.tsv`. Sonst Exit-Code 1 mit Nennung des Übergangs, ohne Branch- oder Label-Änderung. Ebenso bei geschlossenem Issue oder vorhandenem Branch.
+- Die Bedingungen (`guard`, z. B. `no_open_blockers`) wertet der Befehl noch nicht aus.
+- `--dry-run` zeigt die Schritte (`git branch …`, `gh issue edit …`) und ändert nichts.
+- Slug: Kleinbuchstaben, Umlaute und `ß` als `ae oe ue ss`, Akzente entfernt, Sonderzeichen werden zu `-`, höchstens 40 Zeichen an einer Wortgrenze; ohne verwertbare Zeichen `issue`.
+- Fehlt `gh`, der GitHub-Remote oder die Anmeldung, gibt es eine Fehlermeldung ohne Traceback. Scheitert das Label, wird der neue Branch wieder gelöscht.
+- `flow review` ist noch nicht umgesetzt.
 
 ## Teil B: Dieses Repo
 
@@ -168,7 +179,7 @@ Idee: Phasen als Daten beschreiben (Eingang, Ergebnis, Prüfpunkt, Zustandswechs
 ### Umsetzungsreihenfolge (später, jeweils nur bei echtem Bedarf)
 
 1. **Agentenunabhängig und billig:** Git-Hooks über `git config core.hooksPath .githooks` (`commit-msg`: Conventional Commits, `pre-commit`: Secret-Scan), dazu ein CI-Job (Build, Validierung) und Branch-Schutz auf `master`. Wirkt für jede Person und jeden Agenten.
-2. **Skripte:** `scripts/setup.py` (erledigt mit #14, einmaliger Einstieg nach dem Klonen) und danach ein Skript für Zustandswechsel (noch offen, `scripts/flow.py` kennt bisher nur `validate`; Übergänge ausführen gehört zu #11): z. B. `scripts/flow start <issue>` legt `feature/<id>-<slug>` an und setzt `status:in-progress`, `scripts/flow review` setzt `status:in-review`. POSIX-Shell mit `gh`, wie der Rest des Repos.
+2. **Skripte:** `scripts/setup.py` (erledigt mit #14, einmaliger Einstieg nach dem Klonen) und danach ein Skript für Zustandswechsel (`scripts/flow.py` kennt `validate` und `start` (#66), `review` folgt; gehört zu #11): z. B. `scripts/flow start <issue>` legt `feature/<id>-<slug>` an und setzt `status:in-progress`, `scripts/flow review` setzt `status:in-review`. POSIX-Shell mit `gh`, wie der Rest des Repos.
 3. **Phasen als Daten:** erledigt als `workflow/*.tsv` (#14), die Labels entstehen daraus, Doku und Diagramm sollen noch daraus erzeugt werden.
 4. **Nachvollziehbarkeit:** Protokoll der Skill-Aufrufe und `gh`-Schreibzugriffe, Testlauf des Prozesses an einer Beispielaufgabe.
 5. **Orchestrierung (nur bei unbeaufsichtigtem Betrieb):** siehe unten.
