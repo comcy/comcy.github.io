@@ -23,7 +23,7 @@ n_datei = Path(str(plan) + ".n")
 n = int(n_datei.read_text()) if n_datei.exists() else 0
 n_datei.write_text(str(n + 1))
 with open(str(plan) + ".argv", "a", encoding="utf-8") as f:
-    f.write(json.dumps({"args": sys.argv[1:], "cwd": os.getcwd()}) + "\\n")
+    f.write(json.dumps({"args": sys.argv[1:], "cwd": os.getcwd(), "mem": os.environ.get("CLAUDE_CODE_DISABLE_AUTO_MEMORY")}) + "\\n")
 aktion = json.loads(plan.read_text())[n % len(json.loads(plan.read_text()))]
 if aktion == "branch":
     subprocess.run(["git", "branch", "feature/5-x"], check=True)
@@ -73,6 +73,16 @@ class Basis(unittest.TestCase):
         return subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"], capture_output=True, text=True).stdout
 
 class EvalsRun(Basis):
+    def test_agent_laeuft_ohne_nutzer_einstellungen(self):
+        # Gemessen im echten Lauf: ohne diese Flags liefen Hooks, Plugins, MCP und Auto-Memory aus dem echten HOME mit.
+        self.fake_claude(["nichts"])
+        self.run_evals("blocker-offen", "--runs", "1")
+        aufruf = json.loads((self.tmp / "plan.json.argv").read_text().splitlines()[0])
+        args = aufruf["args"]
+        self.assertEqual(args[args.index("--setting-sources") + 1], "project,local")
+        self.assertIn("--strict-mcp-config", args)
+        self.assertEqual(aufruf["mem"], "1")
+
     def test_alle_laeufe_bestehen_und_echtes_repo_bleibt_unveraendert(self):
         self.fake_claude(["nichts"])
         vorher = self.echtes_repo()
