@@ -29,9 +29,10 @@ from proc import SetupError  # noqa: E402
 
 sys.path.insert(0, str(REPO / "scripts"))
 import gate  # noqa: E402
+import workflow  # noqa: E402
 
 FIXTURE = ["AGENTS.md", "docs/agents", "workflow", "scripts", ".githooks", "openspec/config.yaml", ".agents/skills"]
-TOOLS = "Bash Read Edit Write Glob Grep"
+STANDARD_ROLLE = "builder"
 AGENT_TIMEOUT = 900  # Sekunden je Lauf
 STANDARD_ADAPTER = HIER / "adapters" / "claude.py"
 
@@ -47,13 +48,28 @@ class Ctx:
     agent: dict             # normalisierte Antwort des Adapters
 
 
-def aufgaben(namen):
+def aufgaben(namen, ordner=HIER / "tasks"):
     """Aufgabenordner (mit prompt.md) unter evals/tasks/; ohne Namen alle, sortiert."""
-    alle = {p.name: p for p in sorted((HIER / "tasks").iterdir()) if (p / "prompt.md").is_file()}
+    alle = {p.name: p for p in sorted(ordner.iterdir()) if (p / "prompt.md").is_file()}
     unbekannt = [n for n in namen if n not in alle]
     if unbekannt:
         raise SetupError("Unbekannte Aufgabe: %s (vorhanden: %s)" % (", ".join(unbekannt), ", ".join(alle)))
     return [alle[n] for n in namen] if namen else list(alle.values())
+
+
+def rollen_tools(aufgabe):
+    """allowed_tools (Liste) der Rolle aus task.json (optional, Feld `role`, Standard builder) laut workflow/roles.tsv; `-` = keine."""
+    datei = aufgabe / "task.json"
+    rolle = (json.loads(datei.read_text(encoding="utf-8")) if datei.is_file() else {}).get("role", STANDARD_ROLLE)
+    findings = []
+    tabelle = workflow.read_table(REPO / workflow.WORKFLOW_DIR / workflow.ROLES_FILE, "workflow/roles.tsv", findings)
+    if tabelle is None:
+        raise SetupError("; ".join(f.format() for f in findings))
+    for zeile in tabelle.rows:
+        if zeile.values.get("role") == rolle:
+            return [] if zeile.values["allowed_tools"] == "-" else zeile.values["allowed_tools"].split()
+    raise SetupError("Aufgabe %s: Rolle '%s' fehlt in %s (vorhanden: %s)" % (
+        aufgabe.name, rolle, tabelle.file, ", ".join(z.values.get("role", "") for z in tabelle.rows)))
 
 
 def git(repo, *args, env=None):
@@ -113,11 +129,11 @@ def baue_lauf(aufgabe, work, base_env):
     return repo, env
 
 
-def starte_agent(adapter, prompt, cwd, env, model=None, budget=1.0):
+def starte_agent(adapter, prompt, cwd, env, model=None, budget=1.0, tools=()):
     """Einzige Stelle, die den Agenten startet: ruft den Adapter (Python-Skript über sys.executable, sonst das Programm direkt)
     mit dem JSON-Vertrag auf stdin und gibt dessen JSON von stdout als dict zurück."""
     anfrage = {"prompt": prompt, "cwd": str(cwd), "env": env, "model": model, "budget_usd": budget,
-               "allowed_tools": TOOLS.split(), "timeout_s": AGENT_TIMEOUT}
+               "allowed_tools": list(tools), "timeout_s": AGENT_TIMEOUT}
     pfad = str(adapter)
     if os.sep in pfad or "/" in pfad:  # Pfad statt PATH-Name: absolut machen, der Adapter läuft im Wegwerf-Repo
         pfad = str(Path(pfad).resolve())
@@ -144,9 +160,10 @@ def lade_modul(aufgabe):
 
 def lauf(aufgabe, work, args, base_env):
     """Ein Lauf; Rückgabe: (Prüffehler (leer = bestanden, None = nicht prüfbar), Kosten USD oder None, Dauer ms oder None)."""
+    tools = rollen_tools(aufgabe)  # vor dem Aufbau: unbekannte Rolle bricht ab, bevor ein Agent startet
     repo, env = baue_lauf(aufgabe, work, base_env)
     prompt = (aufgabe / "prompt.md").read_text(encoding="utf-8").strip()
-    agent = starte_agent(args.adapter, prompt, repo, env, args.model, args.budget)
+    agent = starte_agent(args.adapter, prompt, repo, env, args.model, args.budget, tools)
     (work / "agent.out").write_text(json.dumps(agent, ensure_ascii=False, indent=2), encoding="utf-8")
     protokoll = work / "gh-writes.jsonl"
     modul = lade_modul(aufgabe)
@@ -234,6 +251,7 @@ def main(argv=None):
     p.add_argument("--model")
     p.add_argument("--budget", type=float, default=1.0, help="USD je Lauf (--max-budget-usd)")
     p.add_argument("--adapter", default=str(STANDARD_ADAPTER), help="Programm, das den Agenten startet (JSON über stdin/stdout, siehe docs/workflow.md)")
+    p.add_argument("--tasks", type=Path, default=HIER / "tasks", help="Ordner mit den Aufgaben (Standard evals/tasks)")
     p.add_argument("--zeit", type=datetime.fromisoformat, default=None, help="Zeitstempel fixieren (für Tests), z. B. 2026-03-04T05:06")
     p.add_argument("--out", type=Path, default=HIER, help="Ausgabeordner für reports/ und runs/")
     args = p.parse_args(argv)
@@ -246,7 +264,7 @@ def main(argv=None):
         jetzt = args.zeit or datetime.now()
         stamp = jetzt.strftime("%Y-%m-%d-%H%M%S")
         with tempfile.TemporaryDirectory(prefix="evals-") as tmp:
-            for aufgabe in aufgaben(args.aufgaben):
+            for aufgabe in aufgaben(args.aufgaben, args.tasks):
                 ergebnisse[aufgabe.name] = []
                 for n in range(1, args.runs + 1):
                     work = Path(tmp) / f"{aufgabe.name}-{n}"
