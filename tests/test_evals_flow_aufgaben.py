@@ -33,6 +33,7 @@ elif aktion == "api-lesen":
     subprocess.run([gh, "api", "repos/o/r/pulls/7"], check=True)
 elif aktion == "lesen":
     subprocess.run([gh, "pr", "checks", "--json", "bucket"], check=True)
+print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}}))
 print(json.dumps({"type": "result", "subtype": "success"}))
 '''
 
@@ -58,7 +59,7 @@ class FlowAufgaben(unittest.TestCase):
         env["FAKE_AKTION"] = aktion
         env["GIT_CONFIG_GLOBAL"] = str(self.tmp / "nogit")
         out = self.tmp / ("out-" + aktion)
-        r = subprocess.run([sys.executable, str(RUN), aufgabe, "--runs", "1", "--out", str(out)],
+        r = subprocess.run([sys.executable, str(RUN), "--sandbox", "none", aufgabe, "--runs", "1", "--out", str(out)],
                            capture_output=True, text=True, encoding="utf-8", env=env)
         return r, r.stdout
 

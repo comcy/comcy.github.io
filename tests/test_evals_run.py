@@ -35,6 +35,7 @@ elif aktion == "login":
 elif aktion == "auth-fehler":
     sys.stderr.write("git: authentication failed for remote\\n")
     sys.exit(1)
+print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}}))
 print(json.dumps({"type": "result", "subtype": "success", "total_cost_usd": 0.01, "duration_ms": 1500}))
 '''
 
@@ -64,7 +65,7 @@ class Basis(unittest.TestCase):
         env = env or self.stubs.env(extra_path=[os.environ["PATH"]])
         env["FAKE_PLAN"] = str(self.plan)
         env["GIT_CONFIG_GLOBAL"] = str(self.tmp / "nogit")  # echte Git-Konfiguration bleibt außen vor
-        return subprocess.run([sys.executable, str(RUN), "--out", str(self.out), *args], capture_output=True,
+        return subprocess.run([sys.executable, str(RUN), "--sandbox", "none", "--out", str(self.out), *args], capture_output=True,
                               text=True, encoding="utf-8", env=env)
 
     def bericht(self):

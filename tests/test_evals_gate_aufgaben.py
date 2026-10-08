@@ -41,6 +41,7 @@ elif aktion == "fremder-autor":
     commit("docs: a.txt ergaenzt", None)
 elif aktion == "schlechte-nachricht":
     commit("a.txt geaendert", "@AUTOR@", "--no-verify")
+print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}}))
 print(json.dumps({"type": "result", "subtype": "success"}))
 '''.replace("@AUTOR@", AUTOR)
 
@@ -68,7 +69,7 @@ class GateAufgaben(unittest.TestCase):
         env = self.stubs.env(extra_path=[os.environ["PATH"]])
         env["FAKE_PLAN"] = str(self.plan)
         env["GIT_CONFIG_GLOBAL"] = str(self.tmp / "nogit")
-        r = subprocess.run([sys.executable, str(RUN), aufgabe, "--runs", "1", "--out", str(self.out)],
+        r = subprocess.run([sys.executable, str(RUN), "--sandbox", "none", aufgabe, "--runs", "1", "--out", str(self.out)],
                            capture_output=True, text=True, encoding="utf-8", env=env)
         bericht = next((self.out / "reports").glob("*.md"), None)
         return r, bericht.read_text(encoding="utf-8") if bericht else ""

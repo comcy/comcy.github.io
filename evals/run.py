@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Eval-Runner: Aufgaben aus evals/tasks/ gegen einen echten Agenten laufen lassen (nur Standardbibliothek).
 
-python3 evals/run.py [aufgabe …] [--runs 3] [--model M] [--budget USD] [--adapter PROGRAMM] [--out ORDNER]
+python3 evals/run.py [aufgabe …] [--runs 3] [--model M] [--budget USD] [--adapter PROGRAMM] [--sandbox auto|bwrap|none] [--out ORDNER]
 
 Je Lauf: Wegwerf-Repo aus dem Arbeitsstand, Stub-gh vor dem PATH, Agent über einen Adapter (starte_agent(), JSON-Vertrag), dann check(ctx) der Aufgabe.
 Bestanden ist eine Aufgabe, wenn die Mehrheit der Läufe besteht (bei 3 Läufen: 2 von 3). Bericht: <out>/reports/.
@@ -131,7 +131,27 @@ def baue_lauf(aufgabe, work, base_env):
     return repo, env
 
 
-def starte_agent(adapter, prompt, cwd, env, model=None, budget=1.0, tools=()):
+def sandbox_befehl(work, home=None):
+    """bwrap-Aufruf (Liste, Programm zuerst) vor dem Adapter: alles schreibgeschützt, beschreibbar nur `work` und die Claude-Konfiguration (nur vorhandene Pfade)."""
+    home = Path(home) if home else Path.home()
+    # /tmp ist ein privates tmpfs: das Bash-Tool von claude braucht dort ein Arbeitsverzeichnis (im Probelauf gemessen: ohne lief Bash nicht)
+    cmd = ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--bind", str(work), str(work)]
+    for p in (home / ".claude", home / ".claude.json"):
+        if p.exists():
+            cmd += ["--bind", str(p), str(p)]
+    return cmd + ["--unshare-pid", "--die-with-parent", "--"]
+
+
+def sandbox_modus(wahl):
+    """'bwrap' oder 'keine' aus --sandbox auto|bwrap|none; ohne bwrap (und nicht none) Abbruch mit SetupError."""
+    if wahl == "none":
+        return "keine"
+    if proc.find("bwrap") is None:
+        raise SetupError("bwrap (Bubblewrap) nicht gefunden: installieren (nur Linux) oder mit --sandbox none ausdrücklich ohne Sandbox laufen lassen")
+    return "bwrap"
+
+
+def starte_agent(adapter, prompt, cwd, env, model=None, budget=1.0, tools=(), sandbox=()):
     """Einzige Stelle, die den Agenten startet: ruft den Adapter (Python-Skript über sys.executable, sonst das Programm direkt)
     mit dem JSON-Vertrag auf stdin und gibt dessen JSON von stdout als dict zurück."""
     anfrage = {"prompt": prompt, "cwd": str(cwd), "env": env, "model": model, "budget_usd": budget,
@@ -140,6 +160,12 @@ def starte_agent(adapter, prompt, cwd, env, model=None, budget=1.0, tools=()):
     if os.sep in pfad or "/" in pfad:  # Pfad statt PATH-Name: absolut machen, der Adapter läuft im Wegwerf-Repo
         pfad = str(Path(pfad).resolve())
     exe, args = (sys.executable, [pfad]) if pfad.lower().endswith(".py") else (pfad, [])
+    if sandbox:  # Sandbox-Befehl davor; der Adapter bleibt unverändert und läuft weiter über proc.run
+        sichtbar = []  # /tmp ist in der Sandbox ein leeres tmpfs: ein Adapter dort bliebe unsichtbar, also schreibgeschützt einbinden
+        if Path(pfad).is_absolute() and Path(pfad).exists() and Path(pfad).resolve().is_relative_to("/tmp"):
+            sichtbar = ["--ro-bind", pfad, pfad]
+        i = sandbox.index("--unshare-pid") if "--unshare-pid" in sandbox else len(sandbox) - 1
+        exe, args = sandbox[0], [*sandbox[1:i], *sichtbar, *sandbox[i:], exe, *args]
     r = proc.run(exe, args, cwd=cwd, env=env, timeout=AGENT_TIMEOUT + 30, input=json.dumps(anfrage, ensure_ascii=False))
     name = Path(pfad).name
     if r.returncode != 0:
@@ -165,7 +191,8 @@ def lauf(aufgabe, work, args, base_env):
     tools = rollen_tools(aufgabe)  # vor dem Aufbau: unbekannte Rolle bricht ab, bevor ein Agent startet
     repo, env = baue_lauf(aufgabe, work, base_env)
     prompt = (aufgabe / "prompt.md").read_text(encoding="utf-8").strip()
-    agent = starte_agent(args.adapter, prompt, repo, env, args.model, args.budget, tools)
+    sandbox = sandbox_befehl(work) if getattr(args, "sandbox", "keine") == "bwrap" else ()
+    agent = starte_agent(args.adapter, prompt, repo, env, args.model, args.budget, tools, sandbox)
     (work / "agent.out").write_text(json.dumps(agent, ensure_ascii=False, indent=2), encoding="utf-8")
     protokoll = work / "gh-writes.jsonl"
     modul = lade_modul(aufgabe)
@@ -176,9 +203,20 @@ def lauf(aufgabe, work, args, base_env):
               [json.loads(z) for z in protokoll.read_text(encoding="utf-8").splitlines()] if protokoll.exists() else [],
               agent.get("tool_calls") or [], agent)
     fehler = modul.check(ctx)
+    if agent.get("tool_calls") is not None and not zustand_gelesen(agent["tool_calls"]):
+        # "nichts getan" darf nicht als bestanden zählen (im Sandbox-Probelauf bestand eine Aufgabe, obwohl Bash nicht lief)
+        fehler = [*fehler, "Zustand nicht gelesen: kein gh-, git- oder flow-Aufruf im Mitschnitt"]
     if agent.get("error"):
         fehler = [f"Adapter-Fehler: {agent['error']}", *fehler]
     return (fehler, kosten, dauer)
+
+
+ZUSTAND_BEFEHLE = re.compile(r"(^|[\s;&|(])(gh|git|flow(\.py)?)(\s|$)|scripts/flow\.py")
+
+
+def zustand_gelesen(tool_calls):
+    """Hat der Agent den Zustand abgefragt? Mindestens ein Bash-Aufruf mit gh, git oder flow im Mitschnitt."""
+    return any(t.get("name") == "Bash" and ZUSTAND_BEFEHLE.search(str(t.get("input", {}).get("command", ""))) for t in tool_calls)
 
 
 def commit_angabe(repo):
@@ -207,12 +245,12 @@ def frueherer(ordner, ohne):
     return (alt[-1].name, alt[-1].read_text(encoding="utf-8")) if alt else None
 
 
-def bericht(ergebnisse, runs, commit, modell, jetzt, vorher=None, nicht_ableitbar=()):
+def bericht(ergebnisse, runs, commit, modell, jetzt, vorher=None, nicht_ableitbar=(), sandbox="keine"):
     """Markdown-Bericht. ergebnisse: {aufgabe: [(fehler (None = nicht prüfbar), kosten, dauer_ms), …]}; vorher: (dateiname, text) des letzten Berichts."""
     usd = lambda w: "$%.4f" % w if w else "-"  # noqa: E731
     kosten = [l[1] for ls in ergebnisse.values() for l in ls if l[1] is not None]
     dauer = [l[2] for ls in ergebnisse.values() for l in ls if l[2] is not None]
-    zeilen = [f"# Eval-Bericht {jetzt:%Y-%m-%d %H:%M}", "", f"- Commit: {commit}", f"- Modell: {modell or 'Standard'}",
+    zeilen = [f"# Eval-Bericht {jetzt:%Y-%m-%d %H:%M}", "", f"- Commit: {commit}", f"- Modell: {modell or 'Standard'}", f"- Sandbox: {sandbox}",
               f"- Läufe: {runs} je Aufgabe, bestanden ab {runs // 2 + 1}",
               f"- Kosten: {'$%.4f' % sum(kosten) if kosten else 'unbekannt'}",
               f"- Dauer: {'%d s' % round(sum(dauer) / 1000) if dauer else 'unbekannt'}"]
@@ -261,6 +299,7 @@ def main(argv=None):
     p.add_argument("--ohne-abgeleitete", action="store_true", help="keine Aufgaben aus workflow/transitions.tsv ableiten (evals/derive.py)")
     p.add_argument("--tasks", type=Path, default=HIER / "tasks", help="Ordner mit den Aufgaben (Standard evals/tasks)")
     p.add_argument("--zeit", type=datetime.fromisoformat, default=None, help="Zeitstempel fixieren (für Tests), z. B. 2026-03-04T05:06")
+    p.add_argument("--sandbox", choices=["auto", "bwrap", "none"], default="auto", help="Adapter unter bwrap starten (auto/bwrap) oder ohne Sandbox (none)")
     p.add_argument("--out", type=Path, default=HIER, help="Ausgabeordner für reports/ und runs/")
     args = p.parse_args(argv)
     try:
@@ -268,6 +307,7 @@ def main(argv=None):
             raise SetupError("--runs muss mindestens 1 sein (angegeben: %d)" % args.runs)
         if args.adapter == str(STANDARD_ADAPTER) and proc.find("claude") is None:
             raise SetupError("claude nicht gefunden: Claude Code installieren und anmelden")
+        args.sandbox = sandbox_modus(args.sandbox)  # danach 'bwrap' oder 'keine'
         ergebnisse = {}
         jetzt = args.zeit or datetime.now()
         stamp = jetzt.strftime("%Y-%m-%d-%H%M%S")
@@ -284,7 +324,7 @@ def main(argv=None):
                     shutil.copy2(work / "agent.out", roh / "agent.out")
         commit = commit_angabe(REPO)
         ziel = args.out / "reports" / f"{stamp}.md"
-        text = bericht(ergebnisse, args.runs, commit, args.model, jetzt, frueherer(ziel.parent, ziel.name), nicht_ableitbar)
+        text = bericht(ergebnisse, args.runs, commit, args.model, jetzt, frueherer(ziel.parent, ziel.name), nicht_ableitbar, args.sandbox)
         if gate.check_text(REPO, text, ziel.relative_to(args.out).as_posix()):
             raise SetupError("Bericht enthält ein mögliches Secret und wurde nicht geschrieben (Rohdaten: %s)" % (args.out / "runs" / stamp))
         ziel.parent.mkdir(parents=True, exist_ok=True)

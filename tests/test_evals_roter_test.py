@@ -46,6 +46,8 @@ elif aktion == "test-danach":
     fix(); commit("fix: parse"); test(); commit("test: nachgereicht")
 elif aktion == "nur-test":
     test(); commit("test: roter Test")
+import json
+print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}}))
 '''
 
 
@@ -79,7 +81,7 @@ class RoterTest(unittest.TestCase):
         env["FAKE_PLAN"] = str(self.tmp / "plan")
         env["GIT_CONFIG_GLOBAL"] = str(self.tmp / "nogit")
         out = self.tmp / ("out-" + aktion)
-        r = subprocess.run([sys.executable, str(RUN), "roter-test", "--runs", "1", "--out", str(out)],
+        r = subprocess.run([sys.executable, str(RUN), "--sandbox", "none", "roter-test", "--runs", "1", "--out", str(out)],
                            capture_output=True, text=True, encoding="utf-8", env=env)
         return r, (r.stdout + r.stderr)
 
