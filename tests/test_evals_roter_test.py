@@ -46,6 +46,8 @@ elif aktion == "test-danach":
     fix(); commit("fix: parse"); test(); commit("test: nachgereicht")
 elif aktion == "nur-test":
     test(); commit("test: roter Test")
+import json
+print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}}))
 '''
 
 

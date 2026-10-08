@@ -33,6 +33,7 @@ elif aktion == "api-lesen":
     subprocess.run([gh, "api", "repos/o/r/pulls/7"], check=True)
 elif aktion == "lesen":
     subprocess.run([gh, "pr", "checks", "--json", "bucket"], check=True)
+print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}}))
 print(json.dumps({"type": "result", "subtype": "success"}))
 '''
 

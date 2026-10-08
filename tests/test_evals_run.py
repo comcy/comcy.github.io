@@ -35,6 +35,7 @@ elif aktion == "login":
 elif aktion == "auth-fehler":
     sys.stderr.write("git: authentication failed for remote\\n")
     sys.exit(1)
+print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}}))
 print(json.dumps({"type": "result", "subtype": "success", "total_cost_usd": 0.01, "duration_ms": 1500}))
 '''
 
