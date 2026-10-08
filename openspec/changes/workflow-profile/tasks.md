@@ -1,5 +1,5 @@
 ## 1. Konfiguration und Abdeckung (Tracer)
-- [ ] 1.1 `workflow/skills.tsv` und `roles.tsv` mit dem heutigen Prozess, `flow validate` liest und prüft sie (Verweise, Abdeckung, Warnungen), Tests, Doku
+- [x] 1.1 `workflow/skills.tsv` und `roles.tsv` mit dem heutigen Prozess, `flow validate` liest und prüft sie (Verweise, Abdeckung, Warnungen), Tests, Doku
 
 ## 2. Skill-Prüfung im Setup
 - [ ] 2.1 Spalte `skill_paths` in `agents.tsv`, `setup --check` meldet Skills je Phase (`ok`, `FEHLT`, Hinweis, "nicht prüfbar"), Tests mit Wegwerf-HOME

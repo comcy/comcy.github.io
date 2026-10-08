@@ -37,6 +37,15 @@ S\tSetup\tscripts/setup.py\tfile_exists:openspec/config.yaml\trequired
 4b\tAbnahme\t-\tlabel:Lokale Abnahme\toptional
 5\tAbschluss\t/archive\t-\trequired
 """
+SKILLS = """skill\tphase\tlevel\tsource\thint\tmanual
+-\tS\trequired\t\t\tyes
+triage\t0\trequired\t\t\tno
+implement\t4\trequired\t\t\tno
+archive\t5\trequired\t\t\tno
+"""
+ROLES = """role\tphases\tallowed_tools\thuman_gate\tdescription
+planner\tS,0,4,4b,5\t-\tno\tAlles
+"""
 
 
 def run(root, *extra):
@@ -56,6 +65,8 @@ class Daten(unittest.TestCase):
         self.put("detectors.tsv", DETECTORS)
         self.put("transitions.tsv", TRANSITIONS)
         self.put("phases.tsv", PHASES)
+        self.put("skills.tsv", SKILLS)
+        self.put("roles.tsv", ROLES)
 
     def put(self, name, text):
         (self.root / "workflow" / name).write_bytes(text.encode("utf-8"))
@@ -191,6 +202,8 @@ class Warnungen(Daten):
 
     def test_phasen_nicht_aufsteigend(self):
         self.edit("phases.tsv", "5\tAbschluss", "3\tAbschluss")
+        self.edit("skills.tsv", "archive\t5", "archive\t3")
+        self.edit("roles.tsv", "4,4b,5", "4,4b,3")
         self.assert_fund(run(self.root), "phases.tsv", "aufsteigend", code=0)
 
     def test_mehrere_dateien_alle_funde_in_einem_lauf(self):
