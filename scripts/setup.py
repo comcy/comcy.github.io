@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import labels  # noqa: E402
 import local  # noqa: E402
 import proc  # noqa: E402
+import skills  # noqa: E402
 import tools  # noqa: E402
 import workflow  # noqa: E402
 
@@ -84,8 +85,10 @@ def label_state(root: Path, mit_labels: bool, nur_pruefen: bool) -> LabelState:
         return LabelState(True, hinweis=str(problem))
 
 
-def report(schritte: list, state: LabelState, warnungen: int, hinweise: int) -> int:
-    """--check: fehlende Schritte und Labels melden, nichts ändern."""
+def report(schritte: list, state: LabelState, warnungen: int, hinweise: int, skill_zeilen=(), skill_fehler=0) -> int:
+    """--check: fehlende Schritte, Skills und Labels melden, nichts ändern."""
+    for zeile in skill_zeilen:
+        print(zeile)
     for schritt in schritte:
         print(f"FEHLT   {schritt.label}" + (f" (Abhilfe: {schritt.hint})" if schritt.hint else ""))
     for label in state.fehlende:
@@ -93,8 +96,9 @@ def report(schritte: list, state: LabelState, warnungen: int, hinweise: int) -> 
     if (meldung := state.not_checked()):
         print(meldung)
         hinweise += 1
-    summary(len(schritte) + len(state.fehlende), warnungen, hinweise)
-    return 1 if schritte or state.fehlende else 0
+    anzahl = len(schritte) + len(state.fehlende) + skill_fehler
+    summary(anzahl, warnungen, hinweise)
+    return 1 if anzahl else 0
 
 
 def apply(root: Path, schritte: list, state: LabelState, mit_labels: bool) -> tuple[int, int]:
@@ -141,7 +145,8 @@ def run(root: Path, gewuenscht: list[str], nur_pruefen: bool, mit_labels: bool =
             schritte.append(local.Step("python für die Hooks nicht im PATH", lambda: None,
                                        "python3, python oder py installieren und in den PATH legen"))
         if nur_pruefen:
-            return report(schritte, state, warnungen, hinweise)
+            zeilen, skill_fehler, skill_hinweise = skills.check(root, agenten)
+            return report(schritte, state, warnungen, hinweise + skill_hinweise, zeilen, skill_fehler)
         erledigt, neue = apply(root, schritte, state, mit_labels)
     except proc.SetupError as fehlermeldung:
         print(f"FEHLER  {fehlermeldung}")

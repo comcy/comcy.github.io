@@ -2,7 +2,7 @@
 - [x] 1.1 `workflow/skills.tsv` und `roles.tsv` mit dem heutigen Prozess, `flow validate` liest und prüft sie (Verweise, Abdeckung, Warnungen), Tests, Doku
 
 ## 2. Skill-Prüfung im Setup
-- [ ] 2.1 Spalte `skill_paths` in `agents.tsv`, `setup --check` meldet Skills je Phase (`ok`, `FEHLT`, Hinweis, "nicht prüfbar"), Tests mit Wegwerf-HOME
+- [x] 2.1 Spalte `skill_paths` in `agents.tsv`, `setup --check` meldet Skills je Phase (`ok`, `FEHLT`, Hinweis, "nicht prüfbar"), Tests mit Wegwerf-HOME
 
 ## 3. Adapter-Vertrag
 - [x] 3.1 `evals/adapters/claude.py` aus `starte_agent`, `--adapter`, JSON-Vertrag, "nicht prüfbar" bei fehlendem Mitschnitt, Test mit Fake-Adapter in anderer Sprache (Shell/Python)
