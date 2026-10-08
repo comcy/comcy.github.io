@@ -29,6 +29,7 @@ from proc import SetupError  # noqa: E402
 
 sys.path.insert(0, str(REPO / "scripts"))
 import gate  # noqa: E402
+import derive  # noqa: E402
 import workflow  # noqa: E402
 
 FIXTURE = ["AGENTS.md", "docs/agents", "workflow", "scripts", ".githooks", "openspec/config.yaml", ".agents/skills"]
@@ -48,9 +49,10 @@ class Ctx:
     agent: dict             # normalisierte Antwort des Adapters
 
 
-def aufgaben(namen, ordner=HIER / "tasks"):
-    """Aufgabenordner (mit prompt.md) unter evals/tasks/; ohne Namen alle, sortiert."""
+def aufgaben(namen, ordner=HIER / "tasks", abgeleitet=()):
+    """Aufgabenordner (mit prompt.md) unter `ordner` plus abgeleitete; ohne Namen alle, sortiert."""
     alle = {p.name: p for p in sorted(ordner.iterdir()) if (p / "prompt.md").is_file()}
+    alle.update((p.name, p) for p in abgeleitet)
     unbekannt = [n for n in namen if n not in alle]
     if unbekannt:
         raise SetupError("Unbekannte Aufgabe: %s (vorhanden: %s)" % (", ".join(unbekannt), ", ".join(alle)))
@@ -202,7 +204,7 @@ def frueherer(ordner, ohne):
     return (alt[-1].name, alt[-1].read_text(encoding="utf-8")) if alt else None
 
 
-def bericht(ergebnisse, runs, commit, modell, jetzt, vorher=None):
+def bericht(ergebnisse, runs, commit, modell, jetzt, vorher=None, nicht_ableitbar=()):
     """Markdown-Bericht. ergebnisse: {aufgabe: [(fehler (None = nicht prüfbar), kosten, dauer_ms), …]}; vorher: (dateiname, text) des letzten Berichts."""
     usd = lambda w: "$%.4f" % w if w else "-"  # noqa: E731
     kosten = [l[1] for ls in ergebnisse.values() for l in ls if l[1] is not None]
@@ -239,6 +241,8 @@ def bericht(ergebnisse, runs, commit, modell, jetzt, vorher=None):
         gruen = [n for n, b in jetzt_ok.items() if b and alt.get(n) == "durchgefallen"]
         zeilen += ["", f"## Vergleich zum letzten Bericht ({vorher[0]})", "",
                    f"- Neu rot: {', '.join(rot) or 'keine'}", f"- Neu grün: {', '.join(gruen) or 'keine'}"]
+    if nicht_ableitbar:
+        zeilen += ["", "## Nicht ableitbar", ""] + [f"- {'(Start)' if v == '-' else v} -> {n}: Detektor `{d}`" for v, n, d in nicht_ableitbar]
     zeilen += ["", "## Auffälligkeiten", ""] + (auffaellig or ["- keine"])
     return "\n".join(zeilen) + "\n"
 
@@ -251,6 +255,7 @@ def main(argv=None):
     p.add_argument("--model")
     p.add_argument("--budget", type=float, default=1.0, help="USD je Lauf (--max-budget-usd)")
     p.add_argument("--adapter", default=str(STANDARD_ADAPTER), help="Programm, das den Agenten startet (JSON über stdin/stdout, siehe docs/workflow.md)")
+    p.add_argument("--ohne-abgeleitete", action="store_true", help="keine Aufgaben aus workflow/transitions.tsv ableiten (evals/derive.py)")
     p.add_argument("--tasks", type=Path, default=HIER / "tasks", help="Ordner mit den Aufgaben (Standard evals/tasks)")
     p.add_argument("--zeit", type=datetime.fromisoformat, default=None, help="Zeitstempel fixieren (für Tests), z. B. 2026-03-04T05:06")
     p.add_argument("--out", type=Path, default=HIER, help="Ausgabeordner für reports/ und runs/")
@@ -263,8 +268,9 @@ def main(argv=None):
         ergebnisse = {}
         jetzt = args.zeit or datetime.now()
         stamp = jetzt.strftime("%Y-%m-%d-%H%M%S")
+        abgeleitet, nicht_ableitbar = ([], []) if args.ohne_abgeleitete else derive.ableiten(REPO / "workflow", args.out / "tasks-derived")
         with tempfile.TemporaryDirectory(prefix="evals-") as tmp:
-            for aufgabe in aufgaben(args.aufgaben, args.tasks):
+            for aufgabe in aufgaben(args.aufgaben, args.tasks, abgeleitet):
                 ergebnisse[aufgabe.name] = []
                 for n in range(1, args.runs + 1):
                     work = Path(tmp) / f"{aufgabe.name}-{n}"
@@ -275,7 +281,7 @@ def main(argv=None):
                     shutil.copy2(work / "agent.out", roh / "agent.out")
         commit = commit_angabe(REPO)
         ziel = args.out / "reports" / f"{stamp}.md"
-        text = bericht(ergebnisse, args.runs, commit, args.model, jetzt, frueherer(ziel.parent, ziel.name))
+        text = bericht(ergebnisse, args.runs, commit, args.model, jetzt, frueherer(ziel.parent, ziel.name), nicht_ableitbar)
         if gate.check_text(REPO, text, ziel.relative_to(args.out).as_posix()):
             raise SetupError("Bericht enthält ein mögliches Secret und wurde nicht geschrieben (Rohdaten: %s)" % (args.out / "runs" / stamp))
         ziel.parent.mkdir(parents=True, exist_ok=True)
