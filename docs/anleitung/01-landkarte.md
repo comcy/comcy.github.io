@@ -17,9 +17,13 @@ flowchart TB
         T2["openspec CLI"]
         T3["scripts/setup.py<br/>scripts/flow.py<br/>scripts/gate.py"]
         T4["kvasir (optional)<br/>status · graph · tui"]
+        T5["evals/run.py<br/>derive.py"]
+        T6["Adapter<br/>evals/adapters/"]
     end
     subgraph Daten["Daten im Repo"]
         D1["workflow/*.tsv<br/>Zustände, Übergänge,<br/>Phasen, Detektoren"]
+        D5["workflow/skills.tsv<br/>roles.tsv<br/>(Skills und Rollen)"]
+        D6["scripts/setup.d/<br/>agents.tsv (skill_paths)"]
         D2["openspec/<br/>specs/ und changes/"]
         D3["AGENTS.md · docs/agents/"]
         D4["scripts/gate.d/<br/>.githooks/"]
@@ -35,6 +39,12 @@ flowchart TB
     S1 --> T1
     S2 --> T2
     T3 --> D1
+    T3 --> D6
+    D5 -. "Abdeckung (validate)<br/>Skill-Prüfung (setup --check)" .-> T3
+    D1 -. "Übergänge → Aufgaben" .-> T5
+    D5 -. "allowed_tools" .-> T5
+    T5 -- "JSON-Vertrag" --> T6
+    T6 -. "startet" .-> A
     T3 --> D4
     T4 -. liest .-> GH
     T4 -. liest .-> D1
@@ -60,6 +70,11 @@ Faustregel aus `docs/workflow.md`: **Das Modell urteilt** (Spezifikation, Code, 
 | `scripts/setup.py` | Klon einrichten: Prüfung, Hooks, Adapter, Labels | Pflicht (einmal je Klon) | `python3 scripts/setup.py --check` |
 | `scripts/flow.py` | Prozessdaten prüfen, Ticket starten, in Review geben | Pflicht für Prozessdaten, `start`/`review` optional | `flow validate` |
 | `scripts/gate.py` | Commit-Lint, Secret-Scan | Pflicht (läuft in Hook und CI) | `gate commits`, `gate secrets` |
+| `workflow/skills.tsv`, `roles.tsv` | welcher Skill welche Phase trägt, welche Rolle was darf; Abdeckung und Skill-Prüfung | Pflicht (Prozessdaten) | `flow validate`, `setup --check` |
+| `agents.tsv` `skill_paths` | Orte der Skills je Agent, nie geraten | Pflicht für die Skill-Prüfung | `scripts/setup.d/agents.tsv` |
+| Evals `evals/run.py` | prüft, ob der Agent den Prozess einhält | optional (kostet echtes Geld) | `python3 evals/run.py` |
+| Adapter `evals/adapters/` | startet den Agenten für die Evals (JSON-Vertrag, jede Sprache) | optional (nur für Evals) | `--adapter <programm>` |
+| Abgeleitete Aufgaben `evals/derive.py` | je Guard eine Aufgabe "Übergang muss abbrechen" | optional (Teil der Evals) | automatisch bei `run.py` |
 | kvasir | Sicht auf Status, Graph, TUI | **optional, empfohlen** | `kvasir status '#N'` |
 | Git-Hooks `.githooks/` | frühe Rückmeldung beim Commit | empfohlen (CI ist verbindlich) | `core.hooksPath` |
 | CI (`test.yml`) | verbindliche Prüfung je PR | Pflicht | GitHub Actions |

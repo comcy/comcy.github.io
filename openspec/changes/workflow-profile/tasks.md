@@ -14,4 +14,4 @@
 - [x] 5.1 `evals/derive.py` für die abbildbaren Detektoren, Bericht-Abschnitt "nicht ableitbar", Tests
 
 ## 6. Doku und Probelauf
-- [ ] 6.1 `docs/workflow.md`, `docs/anleitung/04` und Landkarte; Trockenlauf mit einem zweiten Adapter (Fake); echter Lauf nach Freigabe
+- [x] 6.1 `docs/workflow.md`, `docs/anleitung/04` und Landkarte; Trockenlauf mit einem zweiten Adapter (Fake); echter Lauf nach Freigabe
