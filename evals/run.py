@@ -154,6 +154,7 @@ def bestanden(ok, runs):
 
 def frueherer(ordner, ohne):
     """(Dateiname, Text) des letzten Berichts im Ordner außer `ohne`, sonst None."""
+    # Namensreihenfolge reicht auch für alte Minutennamen (…-HHMM.md): "." sortiert vor Ziffern, also vor …-HHMMSS.md
     alt = [p for p in sorted(ordner.glob("*.md")) if p.name != ohne] if ordner.is_dir() else []
     return (alt[-1].name, alt[-1].read_text(encoding="utf-8")) if alt else None
 
@@ -220,7 +221,7 @@ def main(argv=None):
                     roh.mkdir(parents=True)
                     shutil.copy2(work / "agent.out", roh / "agent.out")
         commit = git(REPO, "rev-parse", "--short", "HEAD").strip()
-        ziel = args.out / "reports" / f"{stamp[:-2]}.md"
+        ziel = args.out / "reports" / f"{stamp}.md"
         text = bericht(ergebnisse, args.runs, commit, args.model, jetzt, frueherer(ziel.parent, ziel.name))
         if gate.check_text(REPO, text, ziel.relative_to(args.out).as_posix()):
             raise SetupError("Bericht enthält ein mögliches Secret und wurde nicht geschrieben (Rohdaten: %s)" % (args.out / "runs" / stamp))

@@ -201,7 +201,7 @@ class Bericht(Basis):
         self.assertNotIn("Vergleich", text)
         self.assertIn("- Kosten: $0.0300", text)
         self.assertIn("- Dauer: 4 s", text)
-        self.assertTrue((self.out / "reports" / "2026-03-04-0506.md").exists())
+        self.assertTrue((self.out / "reports" / "2026-03-04-050600.md").exists())
 
     def test_mit_frueherem_bericht_neu_rot_und_neu_gruen(self):
         self.fake_claude(["nichts"])
@@ -209,13 +209,34 @@ class Bericht(Basis):
         self.fake_claude(["branch"])
         r = self.run_evals("blocker-offen", "--zeit", "2026-03-04T06:00")
         self.assertEqual(r.returncode, 1)
-        neu = (self.out / "reports" / "2026-03-04-0600.md").read_text(encoding="utf-8")
-        self.assertIn("## Vergleich zum letzten Bericht (2026-03-04-0506.md)", neu)
+        neu = (self.out / "reports" / "2026-03-04-060000.md").read_text(encoding="utf-8")
+        self.assertIn("## Vergleich zum letzten Bericht (2026-03-04-050600.md)", neu)
         self.assertIn("- Neu rot: blocker-offen", neu)
         self.fake_claude(["nichts"])
         self.run_evals("blocker-offen", "--zeit", "2026-03-04T07:00")
-        gruen = (self.out / "reports" / "2026-03-04-0700.md").read_text(encoding="utf-8")
+        gruen = (self.out / "reports" / "2026-03-04-070000.md").read_text(encoding="utf-8")
         self.assertIn("- Neu grün: blocker-offen", gruen)
+
+    def test_zwei_laeufe_in_einer_minute_ueberschreiben_sich_nicht(self):
+        self.fake_claude(["nichts"])
+        self.run_evals("blocker-offen", "--runs", "1", "--zeit", "2026-03-04T05:06:10")
+        self.fake_claude(["branch"])
+        self.run_evals("blocker-offen", "--runs", "1", "--zeit", "2026-03-04T05:06:40")
+        self.assertEqual(sorted(p.name for p in (self.out / "reports").glob("*.md")),
+                         ["2026-03-04-050610.md", "2026-03-04-050640.md"])
+        neu = (self.out / "reports" / "2026-03-04-050640.md").read_text(encoding="utf-8")
+        self.assertIn("## Vergleich zum letzten Bericht (2026-03-04-050610.md)", neu)
+        self.assertIn("- Neu rot: blocker-offen", neu)
+
+    def test_alter_bericht_mit_minutenname_bleibt_vergleichbar(self):
+        alt = self.out / "reports"
+        alt.mkdir(parents=True)
+        (alt / "2026-03-04-0506.md").write_text("| blocker-offen | 1/1 | bestanden | $0.01 | - |\n", encoding="utf-8")
+        self.fake_claude(["branch"])
+        self.run_evals("blocker-offen", "--runs", "1", "--zeit", "2026-03-04T05:06:30")
+        neu = (alt / "2026-03-04-050630.md").read_text(encoding="utf-8")
+        self.assertIn("(2026-03-04-0506.md)", neu)
+        self.assertIn("- Neu rot: blocker-offen", neu)
 
     def test_secret_im_bericht_wird_nicht_geschrieben(self):
         self.fake_claude(["nichts"])
