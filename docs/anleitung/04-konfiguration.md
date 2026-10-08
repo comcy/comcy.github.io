@@ -11,6 +11,8 @@ flowchart LR
         tr[transitions.tsv]
         ph[phases.tsv]
         de[detectors.tsv]
+        sk[skills.tsv]
+        ro[roles.tsv]
     end
     subgraph Setup["Setup (scripts/setup.d/)"]
         to[tools.tsv]
@@ -36,7 +38,12 @@ flowchart LR
     tr --> |"Guards (flow start/review)"| FL[flow.py]
     de --> |"Vokabular"| tr & ph
     ph --> |"Stepper"| KV[kvasir]
-    to --> SU[setup.py]
+    to & ag --> SU[setup.py]
+    sk --> |"Abdeckung"| FL
+    sk --> |"Skill-Prüfung (--check)"| SU
+    ro --> |"allowed_tools"| EV[evals/run.py]
+    tr --> |"abgeleitete Aufgaben"| EV
+    EV --> |"JSON-Vertrag"| AD[Adapter]
     ct & se & al --> GA[gate.py]
     hk --> GA
     tw --> |"ruft auf"| GA & FL
@@ -48,8 +55,11 @@ flowchart LR
 | `workflow/transitions.tsv` | `flow validate`, `flow start`, `flow review` | erlaubte Übergänge mit Bedingungen |
 | `workflow/phases.tsv` | `flow validate`, kvasir | Phasen und woran man ihr Ende erkennt |
 | `workflow/detectors.tsv` | `flow validate`, `flow`, kvasir | das feste Vokabular der Bedingungen |
+| `workflow/skills.tsv` | `flow validate`, `setup --check` | welcher Skill welche Phase trägt, Installationshinweis |
+| `workflow/roles.tsv` | `flow validate`, `evals/run.py` | Rollen, ihre Phasen und `allowed_tools` |
 | `scripts/setup.d/tools.tsv` | `setup.py` | benötigte Programme und Mindestversionen |
-| `scripts/setup.d/agents.tsv` | `setup.py` | Agenten mit lokalem Adapter |
+| `scripts/setup.d/agents.tsv` | `setup.py` | Agenten mit lokalem Adapter und Orten ihrer Skills (`skill_paths`) |
+| `evals/adapters/*` | `evals/run.py` (`--adapter`) | startet den Agenten für die Evals (JSON-Vertrag) |
 | `scripts/gate.d/commit-types.tsv` | `gate commits` | erlaubte Commit-Typen |
 | `scripts/gate.d/secrets.tsv` | `gate secrets` | Muster für Secrets |
 | `scripts/gate.d/allow.tsv` | `gate secrets` | begründete Ausnahmen |
@@ -120,6 +130,42 @@ python3 scripts/flow.py validate --strict   # Warnungen werden zu Fehlern (so l�
 
 **echt:** `0 Fehler, 0 Warnungen`. Geprüft werden Spalten, doppelte IDs, Farben, Verweise zwischen den Dateien, Dimensionen, das Vokabular, Sackgassen und die Reihenfolge der Phasen.
 
+### `skills.tsv`: Skills je Phase
+
+Eine Zeile je Phase (und Skill). Spalten: `skill` (`-` = keiner), `phase`, `level` (`required`, `optional`, leer = Stufe der Phase), `source` (Anzeige), `hint` (Installationsbefehl), `manual` (`yes` = die Phase darf ohne Skill von Hand laufen).
+
+```
+skill	phase	level	source	hint	manual
+-	S	required	scripts/setup.py	python3 scripts/setup.py	yes
+triage	0	required	plugin mattpocock-skills	/plugin install mattpocock-skills@claude-plugins-official	no
+tdd	4	required	plugin mattpocock-skills	/plugin install mattpocock-skills@claude-plugins-official	no
+-	4b	optional	Mensch		yes
+```
+
+`flow validate` prüft die **Abdeckung**: Fehler, wenn eine aktive `required`-Phase weder Skill noch `manual=yes` hat, oder wenn die Datei eine unbekannte Phase nennt. `setup --check` sucht die Skills auf der Platte (siehe `agents.tsv`).
+
+### `roles.tsv`: Rollen
+
+Spalten: `role`, `phases` (Komma), `allowed_tools` (Leerzeichen, `-` = keine), `human_gate` (`yes` = Mensch gibt frei, bevor die nächste Phase beginnt), `description`. Beschreibend und prüfbar, **im Alltag nicht erzwungen**; nur die Evals nutzen `allowed_tools`.
+
+```
+role	phases	allowed_tools	human_gate	description
+planner	0,1,2,3	Read Glob Grep Bash	no	Schärft Ideen, schreibt den Change, schneidet Tickets (kein Produktcode)
+builder	4	Bash Read Edit Write Glob Grep	no	Setzt ein Ticket test-first um, ein PR je Ticket
+human	S,4b,6	-	yes	Richtet ein, nimmt ab, mergt und sichert Wissen
+```
+
+`flow validate`: Fehler, wenn eine aktive `required`-Phase keiner Rolle gehört; Warnung (mit `--strict` Fehler) bei einer Rolle ohne Phase.
+
+### Rezepte: Skills, Rollen, Agenten
+
+| Ziel | Schritte |
+| --- | --- |
+| Neuer Skill für eine Phase | Zeile in `skills.tsv` (`skill`, `phase`, `level`, `source`, `hint`, `manual=no`) → `flow validate --strict` → `setup --check` (meldet `FEHLT`, bis der Skill installiert ist) |
+| Skill abschalten | Spalte `enabled` mit `no` in der Zeile; gehört die Phase dann niemandem, meldet `validate` die Abdeckung |
+| Neue Rolle | Zeile in `roles.tsv` (Phasen, `allowed_tools`, `human_gate`) → `flow validate --strict`; für Evals in `evals/tasks/<id>/task.json` `{"role": "<rolle>"}` setzen |
+| Neuer Agent | Zeile in `agents.tsv` mit `agent`, `folder` und `skill_paths` (nur Orte, die geprüft sind) → `python3 scripts/setup.py --check` → ggf. Adapter für die Evals (unten) |
+
 ## `scripts/setup.d/`
 
 `tools.tsv` (`name`, `min_version`, `level`, `version_cmd`, `hint`): Was `setup.py --check` verlangt. `level=required` bricht ab, `recommended` warnt. **Neues Werkzeug**: Zeile ergänzen, `python3 scripts/setup.py --check`.
@@ -130,7 +176,104 @@ openspec	1.14	required
 kvasir	-	recommended
 ```
 
-`agents.tsv` (`agent`, `folder`): Für welche Agenten `setup <agent>` einen lokalen Adapter erzeugt. Der Ordner kommt in `.git/info/exclude` (lokal, nicht eingecheckt); `.agents/` mit den OpenSpec-Skills bleibt eingecheckt (agentenneutrale Basis).
+`agents.tsv` (`agent`, `folder`, `skill_paths`): Für welche Agenten `setup <agent>` einen lokalen Adapter erzeugt. Der Ordner kommt in `.git/info/exclude` (lokal, nicht eingecheckt); `.agents/` mit den OpenSpec-Skills bleibt eingecheckt (agentenneutrale Basis).
+
+`skill_paths`: Orte der Skills, durch `;` getrennt (`~` = Home, relativ = ab Repo-Wurzel). `setup --check` sucht dort `<skill>/SKILL.md`, auch verschachtelt unter einem `skills`-Ordner (Plugin-Cache). **Orte werden nie geraten**: leer heißt "nicht prüfbar" (Hinweis, kein Fehler).
+
+```
+agent	folder	skill_paths
+claude	.claude/	.agents/skills;.claude/skills;~/.agents/skills;~/.claude/skills;~/.claude/plugins/cache
+```
+
+**echt** (leeres Home, Skills nicht installiert; Auszug):
+
+```
+FEHLT   claude: Skill triage (Phase 0), Abhilfe: /plugin install mattpocock-skills@claude-plugins-official
+FEHLT   claude: Skill openspec-propose (Phase 2), Abhilfe: openspec init
+```
+
+**echt** (`skill_paths` leer):
+
+```
+HINWEIS Skills für claude nicht prüfbar (keine skill_paths in scripts/setup.d/agents.tsv): triage, grilling, ...
+```
+
+## `evals/`: Adapter und abgeleitete Aufgaben
+
+Die Evals (`python3 evals/run.py`, siehe `docs/workflow.md`) prüfen, ob ein Agent den Prozess einhält. Welcher Agent läuft, bestimmt ein **Adapter**: ein Programm, das der Runner mit `--adapter <programm>` aufruft (Standard `evals/adapters/claude.py`). `.py` läuft über den eigenen Python, alles andere direkt (Pfad oder Name im PATH), in jeder Sprache.
+
+### Adapter-Vertrag
+
+Der Runner schreibt **ein JSON auf stdin** (UTF-8):
+
+| Feld | Inhalt |
+| --- | --- |
+| `prompt` | Auftrag an den Agenten |
+| `cwd` | Wegwerf-Repo, in dem der Agent arbeiten soll |
+| `env` | Umgebung (Stub-`gh` vor dem PATH, isolierte Git-Konfiguration) |
+| `model` | Modellname oder `null` |
+| `budget_usd` | Obergrenze in USD |
+| `allowed_tools` | Liste aus `roles.tsv` (Rolle der Aufgabe, Standard `builder`) |
+| `timeout_s` | Zeitlimit |
+
+Der Adapter schreibt **ein JSON-Objekt auf stdout**:
+
+| Feld | Inhalt |
+| --- | --- |
+| `tool_calls` | `[{"name": "Bash", "input": {"command": "..."}}, ...]`, der Mitschnitt |
+| `result_text` | Schlusstext des Agenten |
+| `cost_usd`, `duration_ms` | Kosten und Dauer, dürfen `null` sein |
+| `error` | Text, wenn der **Agent** scheiterte, sonst `null` |
+
+Regeln:
+
+- **"nicht prüfbar":** Fehlt `tool_calls` (Feld fehlt oder `null`), laufen Aufgaben mit `BRAUCHT_MITSCHNITT = True` in `check.py` (heute `kein-git-stash`) nicht. Der Bericht führt sie als "nicht prüfbar", nie als "durchgefallen"; die übrigen Aufgaben laufen normal. Wer keinen Mitschnitt liefern kann, lässt das Feld weg, statt `[]` zu melden (`[]` heißt "der Agent hat nichts getan").
+- **Exit-Code 0:** Der Adapter hat gearbeitet. Scheiterte der Agent, steht das in `error`.
+- **Exit-Code ungleich 0 oder kein JSON-Objekt auf stdout:** Der Adapter konnte nicht arbeiten (Programm fehlt, nicht angemeldet). Der Runner bricht mit Meldung (Adaptername und stderr) und Exit-Code 2 ab, es entsteht kein Bericht.
+
+Vollständiges Beispiel, `evals/adapters/beispiel.py` (nur Standardbibliothek, läuft wirklich, tut nichts; Test: `tests/test_evals_beispiel_adapter.py`):
+
+```python
+import json
+import sys
+
+
+def arbeite(anfrage):
+    # Hier würde der eigene Agent in anfrage["cwd"] mit anfrage["prompt"] gestartet.
+    return {
+        "tool_calls": [],  # None = kein Mitschnitt ("nicht prüfbar")
+        "result_text": "Beispiel-Adapter: nichts getan (%d erlaubte Tools)" % len(anfrage["allowed_tools"]),
+        "cost_usd": 0.0,
+        "duration_ms": 0,
+        "error": None,
+    }
+
+
+def main():
+    sys.stdin.reconfigure(encoding="utf-8")
+    sys.stdout.reconfigure(encoding="utf-8")
+    try:
+        antwort = arbeite(json.load(sys.stdin))
+    except (ValueError, KeyError) as fehler:
+        print("ungültige Anfrage: %s" % fehler, file=sys.stderr)
+        return 2
+    print(json.dumps(antwort, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+```sh
+python3 evals/run.py blocker-offen --runs 1 --adapter evals/adapters/beispiel.py
+```
+
+Die Datei im Repo enthält zusätzlich Kommentare. Ein Adapter in einer anderen Sprache (sh, Node, ...) funktioniert genauso: stdin lesen, JSON ausgeben. Belegt durch den Trockenlauf mit einem sh-Skript (Beleg im PR zu #113). Aufgaben und Bericht kennen den Adapter nicht.
+
+### Abgeleitete Aufgaben (`evals/derive.py`)
+
+`run.py` leitet bei jedem Lauf aus `workflow/transitions.tsv` (aktive Zeilen) Aufgaben ab und legt sie frisch unter `<out>/tasks-derived/` an (`--ohne-abgeleitete` schaltet das ab). Je Übergang mit `guard` und je Detektor, den der Stub-`gh` abbilden kann, entsteht eine Aufgabe `<von>-nach-<nach>-<detektor>`: Ticket im Ausgangszustand, genau ein Detektor verletzt, Auftrag "Führe den Übergang aus". Bestanden, wenn kein Branch entsteht, kein Label wechselt und kein vollziehender Schreibaufruf (`gh issue edit/close/reopen`, `pr merge/ready`, `api`) im Protokoll steht. Ein neuer Guard ergibt automatisch eine neue Aufgabe; nicht abbildbare Detektoren (z. B. `pr_state`) stehen im Bericht unter "Nicht ableitbar" (**echt**: `status:in-review -> closed: Detektor pr_state:merged`). Kosten wachsen mit der Zahl der Guards.
 
 ## `scripts/gate.d/` und `.githooks/`
 
@@ -231,4 +374,6 @@ Vorrang: lokal vor Repo vor Standard. Siehe [03-beispiel-mit-kvasir.md](03-beisp
 | Commit-Typ erlauben | Zeile in `commit-types.tsv` |
 | Secret-Treffer ist ein Fehlalarm | Zeile in `allow.tsv` mit Grund |
 | Neues Pflichtprogramm | Zeile in `tools.tsv`, `setup --check` |
-| Zusätzlicher Agent | Zeile in `agents.tsv` (Ordner vorher prüfen) |
+| Zusätzlicher Agent | Zeile in `agents.tsv` (Ordner und `skill_paths` vorher prüfen); für Evals ein Adapter |
+| Neuer Skill, neue Rolle | siehe "Rezepte: Skills, Rollen, Agenten" |
+| Evals mit anderem Agenten | Adapter nach dem Vertrag schreiben, `evals/run.py --adapter <programm>` |

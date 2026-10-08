@@ -10,8 +10,9 @@ Ein **Gate** ist ein Prüfpunkt, der einen Übergang verhindert, solange etwas f
 | keine Secrets | ✓ | | | `pre-commit` | `gates` | über `gates` |
 | Ticket nur starten, wenn bereit und unblockiert | ✓ | | `flow start` | | | |
 | Review erst bei grünen Checks | ✓ | | `flow review` | | | |
+| Skills je Phase installiert (nur lokal: `setup --check` liest `skills.tsv`) | | | | | | |
 | Spec gültig | | `openspec/config.yaml` | | | (`openspec validate` manuell) | |
-| Prozessdaten konsistent | | | | | `python (…)`: `flow validate` | ✓ |
+| Prozessdaten konsistent (inkl. Abdeckung von Phasen durch Skills und Rollen) | | | | | `python (…)`: `flow validate` | ✓ |
 | Seite baut, Tests grün | ✓ | | | | `test` | ✓ |
 | Tests auf 3 Systemen | ✓ | | | | `python (…)` | ✓ |
 | Merge nur bei Grün | | | | | | ✓ |
@@ -33,6 +34,7 @@ Lesehilfe:
 | `--labels` bei `setup` | optional | schreibt auf GitHub, einmal je Repo |
 | `kvasir.toml` | optional | nur für geteilte Überschreibungen |
 | Evals: Prozess-Treue des Agenten (Runner `evals/run.py`, sieben Aufgaben, Bericht mit Diagramm) | **gebaut, erster echter Lauf 2026-10-08** | 6 von 7 bestanden, eine Lücke in `AGENTS.md` gefunden und geschlossen; kein CI-Gate (manueller Start), mehr Läufe und Aufgaben später |
+| Evals mit anderem Agenten (Adapter, abgeleitete Aufgaben) | **gebaut, Trockenlauf mit Fake-Adapter (sh) belegt** | echter Lauf mit `--runs 3` nur nach Freigabe; Anleitung in Kapitel 4 |
 | Maintain-Phase (Monitoring, wiederkehrende Scans) | **fehlt** | Ticket #60, als optionale generische Phase geplant |
 | Metriken (Durchlaufzeit, Nacharbeit, rote CI vor Merge) | **fehlt** | Daten vorhanden (Label-Zeitstempel, PRs), keine Auswertung |
 | Protokoll der Skill-Aufrufe und `gh`-Schreibzugriffe | **fehlt** | Teil von Ticket #11 (Nachvollziehbarkeit) |
@@ -47,6 +49,11 @@ Alle aus echtem Betrieb dieses Repos.
 | `setup --check`: `FEHLT core.hooksPath` | Hooks sind im Klon nicht aktiv | `python3 scripts/setup.py` |
 | Commit abgelehnt: `verletzt die Regel type(scope)!: Betreff` | Nachricht ohne Typ | `feat(bereich): Betreff`, erlaubte Typen in `commit-types.tsv` |
 | Commit abgelehnt: `Regel github-token (mögliches Secret…)` | Muster getroffen, der Wert wird nie ausgegeben | Wert entfernen; Fehlalarm → Zeile mit Grund in `allow.tsv` |
+| `setup --check`: `FEHLT claude: Skill triage (Phase 0), Abhilfe: …` | Skill ist nicht unter den `skill_paths` des Agenten | den Hinweis in der Zeile ausführen (z. B. `/plugin install mattpocock-skills@claude-plugins-official`); liegt der Skill woanders, den Ort in `agents.tsv` ergänzen |
+| `setup --check`: `HINWEIS Skills für … nicht prüfbar` | der Agent hat in `agents.tsv` keine `skill_paths` | geprüfte Orte eintragen (nie raten); kein Fehler, nur eine Lücke |
+| `flow validate`: Phase ohne Skill oder Rolle | `required`-Phase in `skills.tsv`/`roles.tsv` nicht abgedeckt | Zeile ergänzen oder `manual=yes` setzen |
+| Evals-Bericht: Aufgabe `nicht prüfbar` | der Adapter lieferte kein `tool_calls` (nötig für `BRAUCHT_MITSCHNITT`, heute `kein-git-stash`) | Mitschnitt im Adapter liefern; ohne Mitschnitt bleibt die Aufgabe offen, sie fällt nie durch |
+| Evals: `Adapter … endete mit Exit-Code 2` oder `kein gültiges JSON-Objekt` | Adapter konnte nicht arbeiten oder schrieb Text statt JSON auf stdout | stderr in der Meldung lesen; Vertrag in Kapitel 4, Beispiel `evals/adapters/beispiel.py` |
 | `flow start`: `Bedingung label:ready-for-agent ist nicht erfüllt` | Ticket ist nicht bereit (oder Blocker offen) | triagieren (`/triage`) bzw. Blocker abwarten; `--dry-run` zeigt es ohne Änderung |
 | `flow review` bricht ab | PR fehlt oder Checks noch nicht grün | PR anlegen, CI abwarten |
 | kvasir: `! Label sagt in-progress, Issue ist geschlossen` | Status-Label nach dem Merge nicht entfernt | seit `close-labels.yml` automatisch beim Schließen; ältere Fälle von Hand: `gh issue edit N --remove-label status:in-progress` (Liste: `gh issue list --state closed --label status:in-progress`) |
