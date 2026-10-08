@@ -256,6 +256,17 @@ class Bericht(Basis):
         self.assertIn("github-token", r.stdout + r.stderr)
 
 
+class Aufgaben(unittest.TestCase):
+    def test_checks_rufen_programme_ueber_proc_run(self):
+        # Windows: git/gh sind dort .cmd-Wrapper, die subprocess.run nicht findet; proc.run löst sie über shutil.which auf.
+        import ast
+        for datei in sorted((REPO / "evals" / "tasks").glob("*/check.py")):
+            for knoten in ast.walk(ast.parse(datei.read_text(encoding="utf-8"))):
+                if (isinstance(knoten, ast.Attribute) and isinstance(knoten.value, ast.Name)
+                        and knoten.value.id == "subprocess" and knoten.attr in ("run", "Popen", "call", "check_call", "check_output")):
+                    self.fail("%s:%d nutzt subprocess.%s statt proc.run" % (datei.parent.name, knoten.lineno, knoten.attr))
+
+
 class GhStub(unittest.TestCase):
     """Der Stub-gh liest Zustand aus state.json, protokolliert Schreibaufrufe und schreibt nur in STUB_ROOT."""
 
