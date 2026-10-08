@@ -5,7 +5,7 @@
 - [ ] 2.1 Spalte `skill_paths` in `agents.tsv`, `setup --check` meldet Skills je Phase (`ok`, `FEHLT`, Hinweis, "nicht prüfbar"), Tests mit Wegwerf-HOME
 
 ## 3. Adapter-Vertrag
-- [ ] 3.1 `evals/adapters/claude.py` aus `starte_agent`, `--adapter`, JSON-Vertrag, "nicht prüfbar" bei fehlendem Mitschnitt, Test mit Fake-Adapter in anderer Sprache (Shell/Python)
+- [x] 3.1 `evals/adapters/claude.py` aus `starte_agent`, `--adapter`, JSON-Vertrag, "nicht prüfbar" bei fehlendem Mitschnitt, Test mit Fake-Adapter in anderer Sprache (Shell/Python)
 
 ## 4. Rollen steuern die Evals
 - [ ] 4.1 `role` in `task.json`, `allowed_tools` aus `roles.tsv` an den Adapter

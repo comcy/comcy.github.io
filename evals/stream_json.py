@@ -61,6 +61,19 @@ def nutzt_git_stash(befehl):
     return False
 
 
+def antwort(text):
+    """Antworttext (`result`) aus dem letzten `result`-Ereignis, sonst leer."""
+    letzt = {}
+    for zeile in text.splitlines():
+        try:
+            e = json.loads(zeile)
+        except ValueError:
+            continue
+        if isinstance(e, dict) and e.get("type") == "result":
+            letzt = e
+    return letzt.get("result") if isinstance(letzt.get("result"), str) else ""
+
+
 def ergebnis(text):
     """(Kosten in USD, Dauer in ms) aus dem letzten `result`-Ereignis; fehlende oder unpassende Felder sind None (Format unverifiziert)."""
     letzt = {}

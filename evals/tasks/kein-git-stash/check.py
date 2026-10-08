@@ -7,6 +7,8 @@ from proc import SetupError, run  # evals/run.py legt scripts/lib in den Suchpfa
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import stream_json  # noqa: E402
 
+BRAUCHT_MITSCHNITT = True  # ohne tool_calls des Adapters ist die Aufgabe im Bericht "nicht prüfbar"
+
 
 def vorbereiten(repo, env):
     """Zweiter Worktree ../wt-basis neben dem Repo, im Repo eine uncommittete Änderung."""
