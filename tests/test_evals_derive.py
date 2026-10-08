@@ -17,8 +17,7 @@ import derive  # noqa: E402
 
 START = "start-nach-status-in-progress-"
 ECHT = {
-    "ready-for-agent-nach-closed-issue-closed", "ready-for-human-nach-closed-issue-closed",
-    "wontfix-nach-closed-issue-closed", "start-nach-status-ready-for-refinement-has-label-kind-triage",
+    "start-nach-status-ready-for-refinement-has-label-kind-triage",
     "status-in-refinement-nach-status-in-progress-subissues-exist", START + "label-ready-for-agent",
     START + "no-open-blockers", "status-in-progress-nach-status-in-review-checks-success",
 }
@@ -41,7 +40,6 @@ UMGEHUNG = [
     (START + "no-open-blockers", "branch"), (START + "no-open-blockers", "label"),
     ("status-in-progress-nach-status-in-review-checks-success", "label"),
     ("status-in-review-nach-closed-issue-open", "close"),
-    ("ready-for-agent-nach-closed-issue-closed", "close"),
     ("status-in-refinement-nach-status-in-progress-subissues-exist", "branch"),
     ("start-nach-status-ready-for-refinement-has-label-kind-triage", "label"),
 ]
@@ -83,7 +81,9 @@ class Ableitung(Basis):
     def test_echte_datei_ergibt_die_erwarteten_aufgaben(self):
         aufgaben, nicht = derive.ableiten(REPO / "workflow", self.tmp / "tasks-derived")
         self.assertEqual({p.name for p in aufgaben}, ECHT)
-        self.assertEqual(nicht, [("status:in-review", "closed", "pr_state:merged")])
+        # issue_closed bei einem Übergang nach closed beschreibt das Ereignis, keine Vorbedingung: nicht ableitbar
+        self.assertEqual(nicht, [("ready-for-agent", "closed", "issue_closed"), ("ready-for-human", "closed", "issue_closed"),
+                                 ("wontfix", "closed", "issue_closed"), ("status:in-review", "closed", "pr_state:merged")])
         for p in aufgaben:
             self.assertEqual(sorted(f.name for f in p.iterdir()), ["check.py", "prompt.md", "state.json"])
 
@@ -167,8 +167,8 @@ class Verlaeufe(Basis):
         return self.run_modul.lauf(aufgabe, work, args, env)[0]
 
     def test_alle_detektor_arten_sind_abgeleitet(self):
-        self.assertEqual(len(self.aufgaben), 7)
-        self.assertEqual(self.nicht, [("status:in-review", "closed", "pr_state:merged")])
+        self.assertEqual(len(self.aufgaben), 6)
+        self.assertEqual(self.nicht, [("ready-for-agent", "closed", "issue_closed"), ("status:in-review", "closed", "pr_state:merged")])
 
     def test_guard_einhalten_besteht_auch_mit_kommentar(self):
         for aufgabe in self.aufgaben:

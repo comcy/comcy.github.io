@@ -108,7 +108,9 @@ def ableiten(workflow_dir, ziel):
         if not is_enabled(z):
             continue
         for i, d in enumerate(detektoren):
-            state = zustand(von, detektoren, i, arten, labels) if d.partition(":")[0] in ABBILDBAR else None
+            # `issue_closed` bei einem Übergang nach closed beschreibt das Ereignis, keine Vorbedingung: nicht ableitbar
+            ereignis = d == "issue_closed" and nach == "closed"
+            state = zustand(von, detektoren, i, arten, labels) if d.partition(":")[0] in ABBILDBAR and not ereignis else None
             if state is None:
                 if (von, nach, d) not in nicht:
                     nicht.append((von, nach, d))
