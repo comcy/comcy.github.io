@@ -199,6 +199,16 @@ class ClaudeAdapter(Basis):
         self.assertEqual(r.returncode, 2)
         self.assertIn("angemeldet", r.stderr)
 
+    def test_sitzungslimit_ist_adapter_fehler_kein_durchfall(self):
+        skript = self.stubs.dir / "fake_claude.py"
+        self.adapter(self.anfrage(), FAKE_FAIL="1")
+        skript.write_text("import json, sys\nprint(json.dumps({'type': 'result', 'result': \"You've hit your session limit - resets 11:50am\"}))\nsys.exit(1)\n", encoding="utf-8")
+        env = self.stubs.env(extra_path=[os.environ["PATH"]])
+        r = subprocess.run([sys.executable, str(CLAUDE_ADAPTER)], input=json.dumps(self.anfrage(env=env)), capture_output=True,
+                           text=True, encoding="utf-8", env=env)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("Limit", r.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
