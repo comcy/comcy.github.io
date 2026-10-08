@@ -74,6 +74,7 @@ class Stubs:
         env["PATH"] = os.pathsep.join([str(self.dir), *map(str, extra_path)])
         env["STUB_LOG"] = str(self.log)
         env["STUB_ROOT"] = str(self.tmp)
+        env["HOME"] = env["USERPROFILE"] = str(self.tmp / "home")  # nie das echte HOME lesen
         return env
 
     def calls(self):

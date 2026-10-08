@@ -142,6 +142,107 @@ class Hooks(Basis):
         self.assertNotIn("FEHLT", r.stdout)
 
 
+class Skills(Basis):
+    """Skill-Prüfung je gewähltem Agenten; HOME zeigt auf einen Wegwerf-Ordner (stubs.env)."""
+
+    def setUp(self):
+        super().setUp()
+        self.home = self.stubs.tmp / "home"
+        self.home.mkdir()
+        (self.repo / "workflow" / "skills.tsv").write_text(
+            "skill\tphase\tlevel\tsource\thint\tmanual\n"
+            "-\tS\trequired\tx\t\tyes\n"
+            "triage\t0\trequired\tplugin p\t/plugin install p\tno\n"
+            "grilling\t1\t\tplugin p\t/plugin install p\tno\n"
+            "openspec-propose\t2\trequired\topenspec\topenspec init\tno\n"
+            "to-tickets\t3\trequired\tplugin p\t/plugin install p\tno\n"
+            "tdd\t4\toptional\tplugin p\t/plugin install p\tno\n"
+            "-\t4b\toptional\tMensch\t\tyes\n"
+            "-\t5\trequired\tMensch\t\tyes\n"
+            "-\t6\trequired\tMensch\t\tyes\n", encoding="utf-8", newline="\n")
+        (self.repo / "scripts" / "setup.d" / "agents.tsv").write_text(
+            "agent\tfolder\tskill_paths\n"
+            "claude\t.claude/\t.agents/skills;.claude/skills;~/.claude/skills;~/.claude/plugins/cache\n"
+            "blind\t.blind/\t\n", encoding="utf-8", newline="\n")
+        for ordner in (".claude", ".blind"):  # Adapter eingerichtet, damit nur die Skill-Prüfung etwas meldet
+            self.skill(self.repo / ordner / "skills", "openspec-x")
+        (self.repo / ".git" / "info" / "exclude").write_text(".claude/\n.blind/\n", encoding="utf-8")
+
+    def waehle(self, agent):
+        subprocess.run(["git", "-C", str(self.repo), "config", "--local", "setup.agents", agent], check=True)
+
+    def skill(self, ort, name):
+        pfad = Path(ort) / name / "SKILL.md"
+        pfad.parent.mkdir(parents=True, exist_ok=True)
+        pfad.write_text("---\nname: x\n---\n", encoding="utf-8")
+
+    def alle(self):
+        self.waehle("claude")
+        self.skill(self.repo / ".agents" / "skills", "openspec-propose")
+        self.skill(self.home / ".claude" / "skills", "triage")
+        cache = self.home / ".claude" / "plugins" / "cache" / "mkt" / "p" / "1.0" / "skills" / "eng"
+        self.skill(cache, "grilling")
+        self.skill(cache, "to-tickets")
+
+    def test_alles_gefunden_in_repo_home_und_plugin_cache(self):
+        self.alle()
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+        for name in ("triage", "grilling", "openspec-propose", "to-tickets"):
+            self.assertRegex(r.stdout, rf"ok .*{name}")
+
+    def test_pflicht_skill_fehlt_ist_fehler_mit_hinweis(self):
+        self.alle()
+        (self.home / ".claude" / "skills" / "triage" / "SKILL.md").unlink()
+        r = self.check()
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertRegex(r.stdout, r"FEHLT .*triage.*Phase 0")
+        self.assertIn("/plugin install p", r.stdout)
+        self.assertIn("1 Fehler", r.stdout)
+
+    def test_optionaler_skill_fehlt_nur_hinweis(self):
+        self.alle()  # tdd (Phase 4, optional) fehlt
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertRegex(r.stdout, r"HINWEIS .*tdd")
+
+    def test_level_des_skills_ueberschreibt_die_phase(self):
+        self.alle()
+        pfad = self.repo / "workflow" / "skills.tsv"
+        pfad.write_text(pfad.read_text(encoding="utf-8").replace("tdd\t4\toptional", "tdd\t4\trequired"),
+                        encoding="utf-8", newline="\n")
+        self.assertEqual(self.check().returncode, 1)
+        # leere Stufe erbt die der Phase (grilling: Phase 1 ist required)
+        (self.home / ".claude" / "plugins" / "cache" / "mkt" / "p" / "1.0" / "skills" / "eng" / "grilling"
+         / "SKILL.md").unlink()
+        self.assertRegex(self.check().stdout, r"FEHLT .*grilling")
+
+    def test_agent_ohne_skill_paths_ist_nicht_pruefbar(self):
+        self.waehle("blind")
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("nicht prüfbar", r.stdout)
+        self.assertIn("to-tickets", r.stdout)
+        self.assertNotIn("FEHLT", r.stdout)
+
+    def test_ohne_agent_wird_nichts_geraten(self):
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("triage", r.stdout)
+
+    def test_pruefung_aendert_nichts(self):
+        self.alle()
+
+        def dateien():
+            return sorted(p.relative_to(self.stubs.tmp).as_posix() for p in self.stubs.tmp.rglob("*")
+                          if ".git/" not in p.as_posix() and p.name != "stub.log")
+        vorher, zustand = dateien(), self.zustand()
+        self.check()
+        self.check()
+        self.assertEqual(dateien(), vorher)
+        self.assertEqual(self.zustand(), zustand)
+
+
 class Daten(Basis):
     def test_ungueltige_prozessdaten_machen_check_rot_mit_denselben_meldungen(self):
         pfad = self.repo / "workflow" / "states.tsv"

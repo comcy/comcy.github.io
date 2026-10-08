@@ -1,5 +1,7 @@
 # Agenten, für die setup einen lokalen Adapter einrichten kann (openspec init --tools agents,<agent>).
 # folder: Ordner der erzeugten Adapterdateien im Repo, wird in .git/info/exclude eingetragen (nicht eingecheckt).
+# skill_paths: Orte der Skills, durch ; getrennt (~ = Home, relativ = Repo); setup --check sucht dort <skill>/SKILL.md,
+# auch verschachtelt unter einem skills-Ordner (Plugin-Cache). Leer = nicht prüfbar. Orte werden nie geraten.
 # Weitere Agenten erst eintragen, wenn der Ordner geprüft ist.
-agent	folder
-claude	.claude/
+agent	folder	skill_paths
+claude	.claude/	.agents/skills;.claude/skills;~/.agents/skills;~/.claude/skills;~/.claude/plugins/cache

@@ -144,6 +144,8 @@ class Idempotenz(MitRepo):
     def test_check_nach_dem_setup_ist_gruen(self):
         self.openspec(init_schreibt=CLAUDE_DATEIEN)
         self.run_setup("claude")
+        # Skills sind hier nicht das Thema (Wegwerf-HOME ohne Plugins), siehe Skills in test_setup_check
+        (self.repo / "scripts" / "setup.d" / "agents.tsv").write_text("agent\tfolder\nclaude\t.claude/\n", encoding="utf-8")
         r = self.run_setup("--check", "claude")
         self.assertEqual(r.returncode, 0, r.stdout)
 
