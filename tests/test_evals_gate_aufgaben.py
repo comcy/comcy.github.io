@@ -41,6 +41,7 @@ elif aktion == "fremder-autor":
     commit("docs: a.txt ergaenzt", None)
 elif aktion == "schlechte-nachricht":
     commit("a.txt geaendert", "@AUTOR@", "--no-verify")
+print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}}))
 print(json.dumps({"type": "result", "subtype": "success"}))
 '''.replace("@AUTOR@", AUTOR)
 

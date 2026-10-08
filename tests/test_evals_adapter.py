@@ -32,6 +32,7 @@ if "tool_calls" in plan:
 print(json.dumps(antwort))
 '''
 
+LIEST = [{"name": "Bash", "input": {"command": "gh issue view 7"}}]
 STASH = [{"name": "Bash", "input": {"command": "git stash"}}]
 
 
@@ -55,7 +56,7 @@ class FakeAdapter(Basis):
         return [json.loads(z) for z in Path(str(self.plan) + ".req").read_text(encoding="utf-8").splitlines()]
 
     def test_python_skript_als_adapter_bedient_dieselben_aufgaben(self):
-        a = self.adapter({"tool_calls": []})
+        a = self.adapter({"tool_calls": LIEST})
         r = self.run_evals("blocker-offen", "--runs", "1", "--adapter", a, "--model", "m-test", "--budget", "0.5")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("| blocker-offen | 1/1 | bestanden | $0.5000 |", self.bericht())
@@ -69,14 +70,31 @@ class FakeAdapter(Basis):
         self.assertNotEqual(Path(q["cwd"]).resolve(), REPO)
 
     def test_programm_im_path_als_adapter_ohne_claude(self):
-        a = self.adapter({"branch": True, "tool_calls": []}, als_programm=True)
+        a = self.adapter({"branch": True, "tool_calls": LIEST}, als_programm=True)
         env = self.stubs.env()  # PATH nur mit git und dem Adapter, ohne claude
         r = self.run_evals("blocker-offen", "--runs", "1", "--adapter", a, env=env)
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)  # Branch angelegt: Aufgabe fällt durch, unabhängig vom Adapter
         self.assertIn("feature/5-x", self.bericht())
 
+    def test_lauf_ohne_zustandsabfrage_besteht_nicht(self):
+        # Im Sandbox-Probelauf bestand blocker-offen, obwohl Bash nicht lief: "nichts getan" darf nicht als bestanden zählen
+        for tool_calls, rc, erwartet in (([], 1, "durchgefallen"),
+                                         ([{"name": "Read", "input": {"file_path": "x"}}], 1, "durchgefallen"),
+                                         ([{"name": "Bash", "input": {"command": "gh issue view 5"}}], 0, "bestanden"),
+                                         ([{"name": "Bash", "input": {"command": "git -C . branch"}}], 0, "bestanden"),
+                                         ([{"name": "Bash", "input": {"command": "python3 scripts/flow.py start 5 --dry-run"}}], 0, "bestanden")):
+            with self.subTest(tool_calls=str(tool_calls)[:50]):
+                self.nr = getattr(self, "nr", 0) + 1
+                self.out = self.tmp / ("out-%d" % self.nr)
+                a = self.adapter({"tool_calls": tool_calls})
+                r = self.run_evals("blocker-offen", "--runs", "1", "--adapter", a)
+                self.assertEqual(r.returncode, rc, r.stdout + r.stderr)
+                self.assertIn("| blocker-offen | %d/1 | %s |" % (1 - rc, erwartet), self.bericht())
+                if rc:
+                    self.assertIn("Zustand nicht gelesen", self.bericht())
+
     def test_mitschnitt_wird_an_die_aufgabe_gereicht(self):
-        for tool_calls, rc, erwartet, zahl in (([], 0, "bestanden", 1), (STASH, 1, "durchgefallen", 0)):
+        for tool_calls, rc, erwartet, zahl in ((LIEST, 0, "bestanden", 1), (STASH, 1, "durchgefallen", 0)):
             with self.subTest(erwartet=erwartet):
                 self.out = self.tmp / ("out-" + erwartet)
                 a = self.adapter({"tool_calls": tool_calls})

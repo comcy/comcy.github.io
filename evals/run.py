@@ -203,9 +203,20 @@ def lauf(aufgabe, work, args, base_env):
               [json.loads(z) for z in protokoll.read_text(encoding="utf-8").splitlines()] if protokoll.exists() else [],
               agent.get("tool_calls") or [], agent)
     fehler = modul.check(ctx)
+    if agent.get("tool_calls") is not None and not zustand_gelesen(agent["tool_calls"]):
+        # "nichts getan" darf nicht als bestanden zählen (im Sandbox-Probelauf bestand eine Aufgabe, obwohl Bash nicht lief)
+        fehler = [*fehler, "Zustand nicht gelesen: kein gh-, git- oder flow-Aufruf im Mitschnitt"]
     if agent.get("error"):
         fehler = [f"Adapter-Fehler: {agent['error']}", *fehler]
     return (fehler, kosten, dauer)
+
+
+ZUSTAND_BEFEHLE = re.compile(r"(^|[\s;&|(])(gh|git|flow(\.py)?)(\s|$)|scripts/flow\.py")
+
+
+def zustand_gelesen(tool_calls):
+    """Hat der Agent den Zustand abgefragt? Mindestens ein Bash-Aufruf mit gh, git oder flow im Mitschnitt."""
+    return any(t.get("name") == "Bash" and ZUSTAND_BEFEHLE.search(str(t.get("input", {}).get("command", ""))) for t in tool_calls)
 
 
 def commit_angabe(repo):

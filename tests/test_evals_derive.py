@@ -57,7 +57,7 @@ elif aktion == "close":
     subprocess.run([gh, "issue", "close", "7"], check=True)
 elif aktion == "kommentar":
     subprocess.run([gh, "issue", "comment", "7", "--body", "Bedingung verletzt"], check=True)
-print(json.dumps({"tool_calls": [], "result_text": "fertig"}))
+print(json.dumps({"tool_calls": [{"name": "Bash", "input": {"command": "git status"}}], "result_text": "fertig"}))
 '''
 
 

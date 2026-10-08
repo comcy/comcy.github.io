@@ -25,8 +25,10 @@ class BeispielAdapter(Basis):
     def test_runner_bedient_aufgabe_damit(self):
         self.plan.write_text("[]", encoding="utf-8")
         r = self.run_evals("blocker-offen", "--runs", "1", "--adapter", str(BEISPIEL), "--ohne-abgeleitete")
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("| blocker-offen | 1/1 | bestanden |", self.bericht())
+        # Der Beispiel-Adapter tut nichts: der Runner bedient ihn, die Aufgabe besteht aber nicht ("Zustand nicht gelesen")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("| blocker-offen | 0/1 | durchgefallen |", self.bericht())
+        self.assertIn("Zustand nicht gelesen", self.bericht())
 
 
 if __name__ == "__main__":

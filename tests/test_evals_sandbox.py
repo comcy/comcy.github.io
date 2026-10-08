@@ -45,7 +45,7 @@ def versuch(pfad):
         return "fehler"
 aussen = versuch(os.environ["AUSSEN"])
 innen = versuch(Path(anfrage["cwd"]).parent / "innen.txt")
-print(json.dumps({"tool_calls": [], "result_text": "aussen=%s innen=%s" % (aussen, innen)}))
+print(json.dumps({"tool_calls": [{"name": "Bash", "input": {"command": "git status"}}], "result_text": "aussen=%s innen=%s" % (aussen, innen)}))
 '''
 
 
@@ -93,7 +93,7 @@ class SandboxLauf(Basis):
         self.assertEqual(r.returncode, 2, r.stderr)
 
     def test_none_laeuft_und_bericht_sagt_keine(self):
-        r = self.run_evals("blocker-offen", "--runs", "1", "--adapter", self.adapter({"tool_calls": []}), "--sandbox", "none")
+        r = self.run_evals("blocker-offen", "--runs", "1", "--adapter", self.adapter({"tool_calls": [{"name": "Bash", "input": {"command": "git status"}}]}), "--sandbox", "none")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("- Sandbox: keine\n", self.bericht())
 
