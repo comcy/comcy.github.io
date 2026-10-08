@@ -81,7 +81,7 @@ class Ableitung(Basis):
         return ordner
 
     def test_echte_datei_ergibt_die_erwarteten_aufgaben(self):
-        aufgaben, nicht = derive.ableiten(REPO / "workflow", self.tmp / "abgeleitet")
+        aufgaben, nicht = derive.ableiten(REPO / "workflow", self.tmp / "tasks-derived")
         self.assertEqual({p.name for p in aufgaben}, ECHT)
         self.assertEqual(nicht, [("status:in-review", "closed", "pr_state:merged")])
         for p in aufgaben:
@@ -89,22 +89,22 @@ class Ableitung(Basis):
 
     def test_testdatei_und_neuer_guard(self):
         ordner = self.workflow(KOPF + "-\tstatus:in-progress\tbranch_created\tno_open_blockers\n")
-        aufgaben, nicht = derive.ableiten(ordner, self.tmp / "abgeleitet")
+        aufgaben, nicht = derive.ableiten(ordner, self.tmp / "tasks-derived")
         self.assertEqual([p.name for p in aufgaben], [START + "no-open-blockers"])
         self.assertEqual(nicht, [])
         ordner = self.workflow(KOPF + "-\tstatus:in-progress\tbranch_created\tno_open_blockers\n"
                                "status:in-progress\tstatus:in-review\tpr_ready\tchecks:success\n")
-        aufgaben, _ = derive.ableiten(ordner, self.tmp / "abgeleitet")
+        aufgaben, _ = derive.ableiten(ordner, self.tmp / "tasks-derived")
         self.assertEqual(len(aufgaben), 2)
 
     def test_ohne_guard_und_abgeschaltet_gibt_es_keine_aufgabe(self):
         ordner = self.workflow("from\tto\ttrigger\tguard\tenabled\n"
                                "-\tneeds-triage\tissue_opened\t-\tyes\n"
                                "-\tstatus:in-progress\tbranch_created\tno_open_blockers\tno\n")
-        self.assertEqual(derive.ableiten(ordner, self.tmp / "abgeleitet"), ([], []))
+        self.assertEqual(derive.ableiten(ordner, self.tmp / "tasks-derived"), ([], []))
 
     def test_aufgabe_mit_mehreren_detektoren_wird_je_detektor_verletzt(self):
-        aufgaben, _ = derive.ableiten(REPO / "workflow", self.tmp / "abgeleitet")
+        aufgaben, _ = derive.ableiten(REPO / "workflow", self.tmp / "tasks-derived")
         zustand = {p.name: json.loads((p / "state.json").read_text(encoding="utf-8"))["issues"]["7"] for p in aufgaben}
         offen = zustand[START + "no-open-blockers"]
         self.assertIn("ready-for-agent", offen["labels"])  # der andere Detektor ist erfüllt
@@ -114,14 +114,28 @@ class Ableitung(Basis):
         self.assertEqual(ohne_label["blocked_by"], [])
 
     def test_ziel_wird_frisch_angelegt(self):
-        ziel = self.tmp / "abgeleitet"
+        ziel = self.tmp / "tasks-derived"
         (ziel / "alt").mkdir(parents=True)
+        derive.ableiten(REPO / "workflow", ziel)
+        self.assertFalse((ziel / "alt").exists())
+
+    def test_nur_ordner_tasks_derived_wird_ersetzt(self):
+        fremd = self.tmp / "wichtig"
+        fremd.mkdir()
+        (fremd / "datei.txt").write_text("x", encoding="utf-8")
+        with self.assertRaises(derive.proc.SetupError) as e:
+            derive.ableiten(REPO / "workflow", fremd)
+        self.assertIn("tasks-derived", str(e.exception))
+        self.assertTrue((fremd / "datei.txt").exists())
+        ziel = self.tmp / "ok" / "tasks-derived"
+        (ziel).mkdir(parents=True)
+        (ziel / "alt").mkdir()
         derive.ableiten(REPO / "workflow", ziel)
         self.assertFalse((ziel / "alt").exists())
 
     def test_widerspruch_zum_ausgangszustand_ist_nicht_ableitbar(self):
         ordner = self.workflow(KOPF + "needs-triage\tready-for-agent\tx\thas_label_kind:triage\n")
-        aufgaben, nicht = derive.ableiten(ordner, self.tmp / "abgeleitet")
+        aufgaben, nicht = derive.ableiten(ordner, self.tmp / "tasks-derived")
         self.assertEqual(aufgaben, [])
         self.assertEqual(nicht, [("needs-triage", "ready-for-agent", "has_label_kind:triage")])
 
@@ -135,7 +149,7 @@ class Verlaeufe(Basis):
         ordner.mkdir()
         shutil.copy2(REPO / "workflow" / "states.tsv", ordner / "states.tsv")
         (ordner / "transitions.tsv").write_text(JE_DETEKTOR, encoding="utf-8")
-        self.aufgaben, self.nicht = derive.ableiten(ordner, self.tmp / "abgeleitet")
+        self.aufgaben, self.nicht = derive.ableiten(ordner, self.tmp / "tasks-derived")
         self.adapter = self.tmp / "fake_adapter.py"
         self.adapter.write_text(FAKE_ADAPTER, encoding="utf-8")
         self.run_modul = lade_run()

@@ -93,6 +93,8 @@ def ableiten(workflow_dir, ziel):
     """Legt die Aufgaben frisch unter `ziel` an (ein vorhandener Ordner wird ersetzt). Rückgabe: (Aufgabenordner, nicht ableitbar)."""
     workflow_dir, ziel = Path(workflow_dir), Path(ziel)
     if ziel.exists():
+        if ziel.name != "tasks-derived":
+            raise proc.SetupError("%s existiert und heißt nicht 'tasks-derived': wird nicht gelöscht (--out prüfen)" % ziel)
         shutil.rmtree(ziel)
     ziel.mkdir(parents=True)
     states = read_table(workflow_dir / STATES_FILE, STATES_FILE, [])
