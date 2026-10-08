@@ -7,7 +7,9 @@ import os
 import sys
 from pathlib import Path
 
-LESEN = (["issue", "view"], ["pr", "checks"], ["auth", "status"], ["--version"])
+def api_schreibt(args):
+    """gh api schreibt bei -X/--method, -f/-F/--field/--raw-field oder --input (auch als --opt=wert, -XPUT)."""
+    return any(a in ("-f", "-F") or a.startswith(("-X", "--method", "--field", "--raw-field", "--input")) for a in args)
 
 
 def main(args):
@@ -29,7 +31,7 @@ def main(args):
         if "checks" not in state:
             sys.exit("no pull requests found")
         print(json.dumps([{"bucket": b} for b in state["checks"]]))
-    elif args[:1] == ["api"] and not {"-X", "--method", "-f", "-F", "--field"} & set(args):
+    elif args[:1] == ["api"] and not api_schreibt(args):
         teile = args[1].split("/")  # repos/{owner}/{repo}/issues/<n>/<dependencies/blocked_by|sub_issues>
         i = issues.get(teile[4], {}) if len(teile) > 5 else {}
         print(json.dumps(i.get("sub_issues" if teile[-1] == "sub_issues" else "blocked_by", [])))
