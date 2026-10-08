@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Eval-Runner: Aufgaben aus evals/tasks/ gegen einen echten Agenten laufen lassen (nur Standardbibliothek).
 
-python3 evals/run.py [aufgabe …] [--runs 3] [--model M] [--budget USD] [--out ORDNER]
+python3 evals/run.py [aufgabe …] [--runs 3] [--model M] [--budget USD] [--adapter PROGRAMM] [--out ORDNER]
 
-Je Lauf: Wegwerf-Repo aus dem Arbeitsstand, Stub-gh vor dem PATH, Agent über starte_agent(), dann check(ctx) der Aufgabe.
+Je Lauf: Wegwerf-Repo aus dem Arbeitsstand, Stub-gh vor dem PATH, Agent über einen Adapter (starte_agent(), JSON-Vertrag), dann check(ctx) der Aufgabe.
 Bestanden ist eine Aufgabe, wenn die Mehrheit der Läufe besteht (bei 3 Läufen: 2 von 3). Bericht: <out>/reports/.
 """
 from __future__ import annotations
@@ -15,7 +15,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import sys
 import tempfile
 from datetime import datetime
@@ -27,7 +26,6 @@ sys.path.insert(0, str(REPO / "scripts" / "lib"))
 sys.path.insert(0, str(HIER))
 import proc  # noqa: E402
 from proc import SetupError  # noqa: E402
-import stream_json  # noqa: E402
 
 sys.path.insert(0, str(REPO / "scripts"))
 import gate  # noqa: E402
@@ -35,18 +33,18 @@ import gate  # noqa: E402
 FIXTURE = ["AGENTS.md", "docs/agents", "workflow", "scripts", ".githooks", "openspec/config.yaml", ".agents/skills"]
 TOOLS = "Bash Read Edit Write Glob Grep"
 AGENT_TIMEOUT = 900  # Sekunden je Lauf
-LOGIN_HINWEISE = ("/login", "Invalid API key", "not logged in")
+STANDARD_ADAPTER = HIER / "adapters" / "claude.py"
 
 
 @dataclasses.dataclass
 class Ctx:
-    """Was check(ctx) sieht. tool_calls: Mitschnitt aus stream-json."""
+    """Was check(ctx) sieht. tool_calls: Mitschnitt des Adapters (leer, wenn er keinen liefert; solche Aufgaben laufen dann gar nicht)."""
     repo: Path              # Wegwerf-Repo, in dem der Agent gearbeitet hat
     basis_branch: str       # Ausgangsbranch des Repos
     state: dict             # Endzustand des Stub-gh (state.json nach dem Lauf)
     gh_writes: list         # Protokoll der Schreibaufrufe des Stub-gh: [{"args": [...]}, ...]
     tool_calls: list        # Tool-Aufrufe: [{"name": "Bash", "input": {"command": ...}}, ...]
-    agent: subprocess.CompletedProcess
+    agent: dict             # normalisierte Antwort des Adapters
 
 
 def aufgaben(namen):
@@ -115,15 +113,26 @@ def baue_lauf(aufgabe, work, base_env):
     return repo, env
 
 
-def starte_agent(prompt, cwd, env, model=None, budget=1.0):
-    """Einzige Stelle, die `claude` aufruft; ein anderer Runner (SDK) ersetzt nur diese Funktion."""
-    # Isolation (im echten Lauf gemessen): ohne diese Flags liefen Hooks, Plugins, MCP-Server und Auto-Memory aus dem echten HOME mit.
-    args = ["-p", prompt, "--max-budget-usd", str(budget), "--allowedTools", TOOLS,
-            "--permission-mode", "acceptEdits", "--output-format", "stream-json", "--verbose",
-            "--setting-sources", "project,local", "--strict-mcp-config"]
-    if model:
-        args += ["--model", model]
-    return proc.run("claude", args, cwd=cwd, env=dict(env, CLAUDE_CODE_DISABLE_AUTO_MEMORY="1"), timeout=AGENT_TIMEOUT)
+def starte_agent(adapter, prompt, cwd, env, model=None, budget=1.0):
+    """Einzige Stelle, die den Agenten startet: ruft den Adapter (Python-Skript über sys.executable, sonst das Programm direkt)
+    mit dem JSON-Vertrag auf stdin und gibt dessen JSON von stdout als dict zurück."""
+    anfrage = {"prompt": prompt, "cwd": str(cwd), "env": env, "model": model, "budget_usd": budget,
+               "allowed_tools": TOOLS.split(), "timeout_s": AGENT_TIMEOUT}
+    pfad = str(adapter)
+    if os.sep in pfad or "/" in pfad:  # Pfad statt PATH-Name: absolut machen, der Adapter läuft im Wegwerf-Repo
+        pfad = str(Path(pfad).resolve())
+    exe, args = (sys.executable, [pfad]) if pfad.lower().endswith(".py") else (pfad, [])
+    r = proc.run(exe, args, cwd=cwd, env=env, timeout=AGENT_TIMEOUT + 30, input=json.dumps(anfrage, ensure_ascii=False))
+    name = Path(pfad).name
+    if r.returncode != 0:
+        raise SetupError("Adapter %s endete mit Exit-Code %d: %s" % (name, r.returncode, (r.stderr.strip() or r.stdout.strip())[-500:]))
+    try:
+        antwort = json.loads(r.stdout)
+    except ValueError:
+        antwort = None
+    if not isinstance(antwort, dict) or not (antwort.get("tool_calls") is None or isinstance(antwort["tool_calls"], list)):
+        raise SetupError("Adapter %s lieferte kein gültiges JSON-Objekt (tool_calls als Liste) auf stdout: %s" % (name, r.stdout.strip()[:200]))
+    return antwort
 
 
 def lade_modul(aufgabe):
@@ -134,18 +143,20 @@ def lade_modul(aufgabe):
 
 
 def lauf(aufgabe, work, args, base_env):
-    """Ein Lauf; Rückgabe: (Prüffehler (leer = bestanden), Kosten USD oder None, Dauer ms oder None)."""
+    """Ein Lauf; Rückgabe: (Prüffehler (leer = bestanden, None = nicht prüfbar), Kosten USD oder None, Dauer ms oder None)."""
     repo, env = baue_lauf(aufgabe, work, base_env)
     prompt = (aufgabe / "prompt.md").read_text(encoding="utf-8").strip()
-    agent = starte_agent(prompt, repo, env, args.model, args.budget)
-    (work / "agent.out").write_text(agent.stdout + "\n--- stderr\n" + agent.stderr, encoding="utf-8")
-    if agent.returncode != 0 and any(h in agent.stderr + agent.stdout for h in LOGIN_HINWEISE):
-        raise SetupError("claude ist nicht angemeldet: bitte `claude` starten und anmelden (/login)")
+    agent = starte_agent(args.adapter, prompt, repo, env, args.model, args.budget)
+    (work / "agent.out").write_text(json.dumps(agent, ensure_ascii=False, indent=2), encoding="utf-8")
     protokoll = work / "gh-writes.jsonl"
+    modul = lade_modul(aufgabe)
+    kosten, dauer = agent.get("cost_usd"), agent.get("duration_ms")
+    if agent.get("tool_calls") is None and getattr(modul, "BRAUCHT_MITSCHNITT", False):
+        return (None, kosten, dauer)  # nicht prüfbar: Adapter liefert keinen Mitschnitt
     ctx = Ctx(repo, "master", json.loads((work / "state.json").read_text(encoding="utf-8")),
               [json.loads(z) for z in protokoll.read_text(encoding="utf-8").splitlines()] if protokoll.exists() else [],
-              stream_json.tool_calls(agent.stdout), agent)
-    return (lade_modul(aufgabe).check(ctx), *stream_json.ergebnis(agent.stdout))
+              agent.get("tool_calls") or [], agent)
+    return (modul.check(ctx), kosten, dauer)
 
 
 def commit_angabe(repo):
@@ -158,6 +169,15 @@ def bestanden(ok, runs):
     return ok >= runs // 2 + 1
 
 
+def ok_laeufe(laeufe):
+    return sum(1 for l in laeufe if l[0] is not None and not l[0])
+
+
+def nicht_pruefbar(laeufe):
+    """Alle Läufe ohne Prüfung (Adapter lieferte den nötigen Mitschnitt nicht): weder bestanden noch durchgefallen."""
+    return all(l[0] is None for l in laeufe)
+
+
 def frueherer(ordner, ohne):
     """(Dateiname, Text) des letzten Berichts im Ordner außer `ohne`, sonst None."""
     # Namensreihenfolge reicht auch für alte Minutennamen (…-HHMM.md): "." sortiert vor Ziffern, also vor …-HHMMSS.md
@@ -166,28 +186,36 @@ def frueherer(ordner, ohne):
 
 
 def bericht(ergebnisse, runs, commit, modell, jetzt, vorher=None):
-    """Markdown-Bericht. ergebnisse: {aufgabe: [(fehler, kosten, dauer_ms), …]}; vorher: (dateiname, text) des letzten Berichts."""
+    """Markdown-Bericht. ergebnisse: {aufgabe: [(fehler (None = nicht prüfbar), kosten, dauer_ms), …]}; vorher: (dateiname, text) des letzten Berichts."""
     usd = lambda w: "$%.4f" % w if w else "-"  # noqa: E731
     kosten = [l[1] for ls in ergebnisse.values() for l in ls if l[1] is not None]
     dauer = [l[2] for ls in ergebnisse.values() for l in ls if l[2] is not None]
     zeilen = [f"# Eval-Bericht {jetzt:%Y-%m-%d %H:%M}", "", f"- Commit: {commit}", f"- Modell: {modell or 'Standard'}",
               f"- Läufe: {runs} je Aufgabe, bestanden ab {runs // 2 + 1}",
               f"- Kosten: {'$%.4f' % sum(kosten) if kosten else 'unbekannt'}",
-              f"- Dauer: {'%d s' % round(sum(dauer) / 1000) if dauer else 'unbekannt'}", "",
-              "| Aufgabe | Läufe | Ergebnis | Kosten | Erste fehlgeschlagene Prüfung |", "| --- | --- | --- | --- | --- |"]
+              f"- Dauer: {'%d s' % round(sum(dauer) / 1000) if dauer else 'unbekannt'}"]
+    leer = [n for n, ls in ergebnisse.items() if nicht_pruefbar(ls)]
+    if leer:
+        zeilen.append(f"- Nicht prüfbar: {len(leer)} von {len(ergebnisse)} Aufgaben ({', '.join(leer)})")
+    zeilen += ["", "| Aufgabe | Läufe | Ergebnis | Kosten | Erste fehlgeschlagene Prüfung |", "| --- | --- | --- | --- | --- |"]
     jetzt_ok, auffaellig = {}, []
     for name, laeufe in ergebnisse.items():
-        ok = sum(1 for l in laeufe if not l[0])
+        if name in leer:
+            zeilen.append(f"| {name} | - | nicht prüfbar | {usd(sum(l[1] or 0 for l in laeufe))} | - |")
+            auffaellig.append(f"- {name}: nicht prüfbar, der Adapter lieferte keine `tool_calls`")
+            continue
+        ok = ok_laeufe(laeufe)
         erste = next((l[0][0] for l in laeufe if l[0]), "")
         jetzt_ok[name] = bestanden(ok, runs)
         zeilen.append(f"| {name} | {ok}/{runs} | {'bestanden' if jetzt_ok[name] else 'durchgefallen'} | "
                       f"{usd(sum(l[1] or 0 for l in laeufe))} | {erste or '-'} |")
         if erste:
             auffaellig.append(f"- {name}: {runs - ok} von {runs} Läufen fehlgeschlagen, erste Prüfung: {erste}")
-    quoten = ", ".join(str(round(100 * sum(1 for l in ls if not l[0]) / runs)) for ls in ergebnisse.values())
-    namen = ", ".join('"%s"' % n for n in ergebnisse)
-    zeilen += ["", "## Bestehensquote", "", "```mermaid", "xychart-beta", '    title "Bestehensquote je Aufgabe (%)"',
-               f"    x-axis [{namen}]", '    y-axis "Prozent" 0 --> 100', f"    bar [{quoten}]", "```"]
+    quoten = ", ".join(str(round(100 * ok_laeufe(ls) / runs)) for n, ls in ergebnisse.items() if n not in leer)
+    namen = ", ".join('"%s"' % n for n in ergebnisse if n not in leer)
+    if namen:
+        zeilen += ["", "## Bestehensquote", "", "```mermaid", "xychart-beta", '    title "Bestehensquote je Aufgabe (%)"',
+                   f"    x-axis [{namen}]", '    y-axis "Prozent" 0 --> 100', f"    bar [{quoten}]", "```"]
     if vorher:
         alt = dict(re.findall(r"^\| (\S+) \| \d+/\d+ \| (bestanden|durchgefallen) \|", vorher[1], re.M))
         rot = [n for n, b in jetzt_ok.items() if not b and alt.get(n) == "bestanden"]
@@ -205,13 +233,14 @@ def main(argv=None):
     p.add_argument("--runs", type=int, default=3)
     p.add_argument("--model")
     p.add_argument("--budget", type=float, default=1.0, help="USD je Lauf (--max-budget-usd)")
+    p.add_argument("--adapter", default=str(STANDARD_ADAPTER), help="Programm, das den Agenten startet (JSON über stdin/stdout, siehe docs/workflow.md)")
     p.add_argument("--zeit", type=datetime.fromisoformat, default=None, help="Zeitstempel fixieren (für Tests), z. B. 2026-03-04T05:06")
     p.add_argument("--out", type=Path, default=HIER, help="Ausgabeordner für reports/ und runs/")
     args = p.parse_args(argv)
     try:
         if args.runs < 1:
             raise SetupError("--runs muss mindestens 1 sein (angegeben: %d)" % args.runs)
-        if proc.find("claude") is None:
+        if args.adapter == str(STANDARD_ADAPTER) and proc.find("claude") is None:
             raise SetupError("claude nicht gefunden: Claude Code installieren und anmelden")
         ergebnisse = {}
         jetzt = args.zeit or datetime.now()
@@ -235,7 +264,7 @@ def main(argv=None):
         ziel.write_text(text, encoding="utf-8")
         print(text)
         print("Bericht:", ziel)
-        return 0 if all(bestanden(sum(1 for l in ls if not l[0]), args.runs) for ls in ergebnisse.values()) else 1
+        return 0 if all(bestanden(ok_laeufe(ls), args.runs) for ls in ergebnisse.values() if not nicht_pruefbar(ls)) else 1
     except SetupError as fehler:
         print("Fehler:", fehler, file=sys.stderr)
         return 2
