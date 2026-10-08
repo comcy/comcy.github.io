@@ -269,6 +269,8 @@ def check_profile(phases: Table, skills: Table | None, roles: Table | None, find
             v = z.values
             if not v["role"]:
                 findings.append(Finding(roles.file, z.line, "error", "role ist leer"))
+            if v.get("enabled", "yes") not in ("yes", "no", ""):
+                findings.append(Finding(roles.file, z.line, "error", f"enabled muss yes oder no sein, nicht '{v['enabled']}'"))
             if v["human_gate"] not in ("yes", "no"):
                 findings.append(Finding(roles.file, z.line, "error", f"human_gate muss yes oder no sein, nicht '{v['human_gate']}'"))
             ids = [p.strip() for p in v["phases"].split(",") if p.strip()]
