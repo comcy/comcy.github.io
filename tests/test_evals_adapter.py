@@ -13,7 +13,7 @@ CLAUDE_ADAPTER = REPO / "evals" / "adapters" / "claude.py"
 
 # Fake-Adapter in einer "anderen Sprache": liest den Vertrag von stdin, legt die Anfrage ab, antwortet laut Plan.
 FAKE_ADAPTER = '''\
-import json, os, subprocess, sys
+import json, os, shutil, subprocess, sys
 anfrage = json.loads(sys.stdin.read())
 with open(os.environ["FAKE_PLAN"] + ".req", "a", encoding="utf-8") as f:
     f.write(json.dumps(anfrage) + "\\n")
@@ -25,7 +25,7 @@ if plan.get("kaputt"):
     print("das ist kein json")
     sys.exit(0)
 if plan.get("branch"):
-    subprocess.run(["git", "branch", "feature/5-x"], cwd=anfrage["cwd"], check=True)
+    subprocess.run([shutil.which("git"), "branch", "feature/5-x"], cwd=anfrage["cwd"], check=True)
 antwort = {"result_text": "fertig", "cost_usd": 0.5, "duration_ms": 2000, "error": None}
 if "tool_calls" in plan:
     antwort["tool_calls"] = plan["tool_calls"]
