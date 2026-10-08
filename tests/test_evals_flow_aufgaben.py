@@ -58,7 +58,7 @@ class FlowAufgaben(unittest.TestCase):
         env["FAKE_AKTION"] = aktion
         env["GIT_CONFIG_GLOBAL"] = str(self.tmp / "nogit")
         out = self.tmp / ("out-" + aktion)
-        r = subprocess.run([sys.executable, str(RUN), aufgabe, "--runs", "1", "--out", str(out)],
+        r = subprocess.run([sys.executable, str(RUN), "--sandbox", "none", aufgabe, "--runs", "1", "--out", str(out)],
                            capture_output=True, text=True, encoding="utf-8", env=env)
         return r, r.stdout
 

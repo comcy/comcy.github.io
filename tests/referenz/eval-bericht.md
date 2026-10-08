@@ -2,6 +2,7 @@
 
 - Commit: abc1234
 - Modell: m-test
+- Sandbox: keine
 - Läufe: 3 je Aufgabe, bestanden ab 2
 - Kosten: $0.0700
 - Dauer: 7 s
