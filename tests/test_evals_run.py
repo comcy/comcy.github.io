@@ -194,6 +194,30 @@ class Bericht(Basis):
         text = modul.bericht(self.ERGEBNISSE, 3, "abc1234", "m-test", datetime(2026, 3, 4, 5, 6), vorher)
         self.assertEqual(text, (REPO / "tests" / "referenz" / "eval-bericht.md").read_text(encoding="utf-8"))
 
+    def test_commit_angabe_weist_lokale_aenderungen_aus(self):
+        import importlib.util
+        sys.path.insert(0, str(REPO / "scripts" / "lib"))
+        spec = importlib.util.spec_from_file_location("evals_run2", RUN)
+        modul = importlib.util.module_from_spec(spec)
+        sys.modules["evals_run2"] = modul
+        spec.loader.exec_module(modul)
+        repo = self.tmp / "r"
+        repo.mkdir()
+        env = dict(os.environ, GIT_CONFIG_GLOBAL=str(self.tmp / "nogit"), GIT_CONFIG_NOSYSTEM="1")
+        git = lambda *a: subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.com", *a],  # noqa: E731
+                                        check=True, capture_output=True, text=True, env=env)
+        git("init", "-q")
+        (repo / "AGENTS.md").write_text("a\n", encoding="utf-8")
+        git("add", "-A")
+        git("commit", "-q", "-m", "chore: x")
+        sha = git("rev-parse", "--short", "HEAD").stdout.strip()
+        self.assertEqual(modul.commit_angabe(repo), sha)
+        (repo / "evals").mkdir()
+        (repo / "evals" / "x.md").write_text("nicht im Fixture\n", encoding="utf-8")
+        self.assertEqual(modul.commit_angabe(repo), sha)
+        (repo / "AGENTS.md").write_text("b\n", encoding="utf-8")
+        self.assertEqual(modul.commit_angabe(repo), sha + " (+ lokale Änderungen)")
+
     def test_mermaid_block_hat_gueltige_form(self):
         self.fake_claude(["nichts", "nichts", "branch"])
         self.run_evals("blocker-offen", "--runs", "3", "--zeit", "2026-03-04T05:06")

@@ -148,6 +148,12 @@ def lauf(aufgabe, work, args, base_env):
     return (lade_modul(aufgabe).check(ctx), *stream_json.ergebnis(agent.stdout))
 
 
+def commit_angabe(repo):
+    """Kurz-Hash von HEAD; die Läufe nutzen den Arbeitsstand, daher Zusatz bei Änderungen an den kopierten Pfaden."""
+    sha = git(repo, "rev-parse", "--short", "HEAD").strip()
+    return sha + (" (+ lokale Änderungen)" if git(repo, "status", "--porcelain", "--", *FIXTURE).strip() else "")
+
+
 def bestanden(ok, runs):
     return ok >= runs // 2 + 1
 
@@ -220,7 +226,7 @@ def main(argv=None):
                     roh = args.out / "runs" / stamp / f"{aufgabe.name}-{n}"
                     roh.mkdir(parents=True)
                     shutil.copy2(work / "agent.out", roh / "agent.out")
-        commit = git(REPO, "rev-parse", "--short", "HEAD").strip()
+        commit = commit_angabe(REPO)
         ziel = args.out / "reports" / f"{stamp}.md"
         text = bericht(ergebnisse, args.runs, commit, args.model, jetzt, frueherer(ziel.parent, ziel.name))
         if gate.check_text(REPO, text, ziel.relative_to(args.out).as_posix()):
