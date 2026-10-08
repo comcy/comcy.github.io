@@ -1,0 +1,7 @@
+# Rollen: beschreiben und prüfbar, im Alltag nicht erzwungen. phases: Komma. allowed_tools: Leerzeichen, - = keine.
+# human_gate: yes = Mensch muss freigeben, bevor die nächste Phase beginnt. enabled (optional): no schaltet eine Rolle ab.
+role	phases	allowed_tools	human_gate	description
+planner	0,1,2,3	Read Glob Grep Bash	no	Schärft Ideen, schreibt den Change, schneidet Tickets (kein Produktcode)
+builder	4	Bash Read Edit Write Glob Grep	no	Setzt ein Ticket test-first um, ein PR je Ticket
+reviewer	4b,5	Read Glob Grep Bash	no	Prüft den PR gegen Specs und Standards, archiviert den Change
+human	S,4b,6	-	yes	Richtet ein, nimmt ab, mergt und sichert Wissen

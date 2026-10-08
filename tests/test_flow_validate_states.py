@@ -28,11 +28,13 @@ def run_validate(root, *extra):
     )
 
 
-# Die übrigen drei Dateien müssen existieren (jede Datei ist Pflicht) und zu den Zuständen in GOOD passen,
+# Die übrigen fünf Dateien müssen existieren (jede Datei ist Pflicht) und zu den Zuständen in GOOD passen,
 # damit die Tests hier nur die Zustände prüfen.
 SUPPORT = {
     "detectors.tsv": "name\targ\tdescription\nissue_open\t-\tIssue ist offen\n",
     "phases.tsv": "id\tname\ttool\tdone_when\tlevel\n0\tEingang\t/triage\tissue_open\trequired\n",
+    "skills.tsv": "skill\tphase\tlevel\tsource\thint\tmanual\ntriage\t0\trequired\t\t\tno\n",
+    "roles.tsv": "role\tphases\tallowed_tools\thuman_gate\tdescription\nplanner\t0\t-\tno\tPlant\n",
     "transitions.tsv": "from\tto\ttrigger\tguard\n"
                        "-\tneeds-triage\tstart\t-\n"
                        "needs-triage\tready-for-agent\tready\tissue_open\n"

@@ -110,9 +110,11 @@ Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Date
 | `states.tsv` | Zustände: `id` (= Label), `kind` (`triage`, `status`, `terminal`), `color`, `description` |
 | `transitions.tsv` | Übergänge: `from` (oder `-` für den Start), `to`, `trigger`, `guard` (Detektoren, Komma = UND) |
 | `phases.tsv` | Phasen S, 0 bis 6, 4b: `id`, `name`, `tool`, `done_when`, `level` |
+| `skills.tsv` | Skills je Phase (eine Zeile je Phase): `skill` (`-` = keiner), `phase`, `level` (`required`, `optional`, leer = Stufe der Phase), `source`, `hint` (Installationsbefehl), `manual` (`yes` = Phase darf ohne Skill von Hand laufen) |
+| `roles.tsv` | Rollen (`planner`, `builder`, `reviewer`, `human`): `role`, `phases` (Komma), `allowed_tools` (Leerzeichen, `-` = keine), `human_gate` (`yes` = Mensch gibt vor der nächsten Phase frei), `description`; beschreibend und prüfbar, im Alltag nicht erzwungen |
 | `detectors.tsv` | das feste Vokabular der Bedingungen mit Argumentform (`-`, `text`, `path`, `enum:a|b|c`) |
 
-`python3 scripts/flow.py validate` prüft Spalten, Eindeutigkeit, Verweise, Dimensionen (Übergänge nur innerhalb einer Dimension, außer vom Start oder zu `closed`) und das Vokabular; Warnungen (abgeschaltete Verweise, Sackgassen, Phasenreihenfolge) werden mit `--strict` zu Fehlern. Es läuft in jedem Pull Request. Die Dateien enthalten nie Code, ausgewertet wird im Werkzeug. Ein Wechsel auf JSON oder YAML wäre lokal im Leser (`scripts/lib/workflow.py`) möglich, sobald ODER-Bedingungen, mehr als etwa acht Eigenschaften je Schritt oder Tab-Fehler es nötig machen.
+`python3 scripts/flow.py validate` prüft Spalten, Eindeutigkeit, Verweise, Dimensionen (Übergänge nur innerhalb einer Dimension, außer vom Start oder zu `closed`) und das Vokabular; die Abdeckung: Fehler, wenn eine aktive `required`-Phase weder Skill noch `manual` hat oder keiner Rolle zugeordnet ist, oder wenn `skills.tsv`/`roles.tsv` eine unbekannte Phase nennen; Warnungen (abgeschaltete Verweise, Sackgassen, Phasenreihenfolge, Rolle ohne Phase, Skill einer abgeschalteten Phase) werden mit `--strict` zu Fehlern. Es läuft in jedem Pull Request. Die Dateien enthalten nie Code, ausgewertet wird im Werkzeug. Ein Wechsel auf JSON oder YAML wäre lokal im Leser (`scripts/lib/workflow.py`) möglich, sobald ODER-Bedingungen, mehr als etwa acht Eigenschaften je Schritt oder Tab-Fehler es nötig machen.
 
 ### Zustandswechsel (`flow start`)
 
