@@ -129,6 +129,15 @@ class EvalsRun(Basis):
                 self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
                 self.assertIn(erwartet, self.bericht())
 
+    def test_runs_unter_eins_wird_abgelehnt(self):
+        self.fake_claude(["nichts"])
+        for wert in ("0", "-1"):
+            with self.subTest(runs=wert):
+                r = self.run_evals("blocker-offen", "--runs", wert)
+                self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+                self.assertIn("--runs", r.stdout + r.stderr)
+                self.assertNotIn("Traceback", r.stdout + r.stderr)
+
     def test_modell_wird_an_claude_gereicht(self):
         self.fake_claude(["nichts"])
         self.run_evals("blocker-offen", "--runs", "1", "--model", "m-test", "--budget", "0.5")

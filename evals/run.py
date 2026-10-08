@@ -202,6 +202,8 @@ def main(argv=None):
     p.add_argument("--out", type=Path, default=HIER, help="Ausgabeordner für reports/ und runs/")
     args = p.parse_args(argv)
     try:
+        if args.runs < 1:
+            raise SetupError("--runs muss mindestens 1 sein (angegeben: %d)" % args.runs)
         if proc.find("claude") is None:
             raise SetupError("claude nicht gefunden: Claude Code installieren und anmelden")
         ergebnisse = {}
