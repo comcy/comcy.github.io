@@ -5,8 +5,9 @@ Annahme (unverifiziert): je Zeile ein JSON-Objekt; Tool-Aufrufe stehen in {"type
 """
 import json
 import re
+import shlex
 
-GIT_STASH = re.compile(r"\bgit(?:\s+(?:-[Cc]\s+\S+|-\S+))*\s+stash\b")
+TRENNER = {";", "&", "&&", "|", "||", "\n"}
 
 
 def tool_calls(text):
@@ -26,8 +27,38 @@ def tool_calls(text):
     return aufrufe
 
 
+def _segmente(befehl):
+    """Token je Befehls-Segment (getrennt an ; & && | || und Zeilenumbruch); Anführungszeichen bleiben ein Token."""
+    lex = shlex.shlex(befehl, posix=True, punctuation_chars=";&|\n")
+    lex.whitespace = " \t\r"
+    lex.whitespace_split = True
+    segmente, aktuell = [], []
+    for t in lex:
+        if t in TRENNER:
+            segmente.append(aktuell)
+            aktuell = []
+        else:
+            aktuell.append(t)
+    return segmente + [aktuell]
+
+
 def nutzt_git_stash(befehl):
-    return bool(GIT_STASH.search(befehl))
+    """True, wenn ein Segment `git [Optionen] stash …` ist; Treffer in Argumenten (commit -m, grep) zählen nicht."""
+    try:
+        segmente = _segmente(befehl)
+    except ValueError:  # z. B. offenes Anführungszeichen: lieber ein Treffer zu viel
+        return bool(re.search(r"\bgit(?:\s+-\S+)*\s+stash\b", befehl))
+    for tok in segmente:
+        while tok and re.fullmatch(r"\w+=.*", tok[0]):  # FOO=1 git …
+            tok = tok[1:]
+        if tok[:1] != ["git"]:
+            continue
+        i = 1
+        while i < len(tok) and tok[i].startswith("-"):
+            i += 2 if tok[i] in ("-C", "-c") else 1
+        if tok[i:i + 1] == ["stash"]:
+            return True
+    return False
 
 
 def ergebnis(text):

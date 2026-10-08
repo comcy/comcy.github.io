@@ -35,7 +35,7 @@ import gate  # noqa: E402
 FIXTURE = ["AGENTS.md", "docs/agents", "workflow", "scripts", ".githooks", "openspec/config.yaml", ".agents/skills"]
 TOOLS = "Bash Read Edit Write Glob Grep"
 AGENT_TIMEOUT = 900  # Sekunden je Lauf
-LOGIN_HINWEISE = ("/login", "Invalid API key", "not logged in", "authentication")
+LOGIN_HINWEISE = ("/login", "Invalid API key", "not logged in")
 
 
 @dataclasses.dataclass
@@ -148,12 +148,19 @@ def lauf(aufgabe, work, args, base_env):
     return (lade_modul(aufgabe).check(ctx), *stream_json.ergebnis(agent.stdout))
 
 
+def commit_angabe(repo):
+    """Kurz-Hash von HEAD; die Läufe nutzen den Arbeitsstand, daher Zusatz bei Änderungen an den kopierten Pfaden."""
+    sha = git(repo, "rev-parse", "--short", "HEAD").strip()
+    return sha + (" (+ lokale Änderungen)" if git(repo, "status", "--porcelain", "--", *FIXTURE).strip() else "")
+
+
 def bestanden(ok, runs):
     return ok >= runs // 2 + 1
 
 
 def frueherer(ordner, ohne):
     """(Dateiname, Text) des letzten Berichts im Ordner außer `ohne`, sonst None."""
+    # Namensreihenfolge reicht auch für alte Minutennamen (…-HHMM.md): "." sortiert vor Ziffern, also vor …-HHMMSS.md
     alt = [p for p in sorted(ordner.glob("*.md")) if p.name != ohne] if ordner.is_dir() else []
     return (alt[-1].name, alt[-1].read_text(encoding="utf-8")) if alt else None
 
@@ -202,6 +209,8 @@ def main(argv=None):
     p.add_argument("--out", type=Path, default=HIER, help="Ausgabeordner für reports/ und runs/")
     args = p.parse_args(argv)
     try:
+        if args.runs < 1:
+            raise SetupError("--runs muss mindestens 1 sein (angegeben: %d)" % args.runs)
         if proc.find("claude") is None:
             raise SetupError("claude nicht gefunden: Claude Code installieren und anmelden")
         ergebnisse = {}
@@ -217,8 +226,8 @@ def main(argv=None):
                     roh = args.out / "runs" / stamp / f"{aufgabe.name}-{n}"
                     roh.mkdir(parents=True)
                     shutil.copy2(work / "agent.out", roh / "agent.out")
-        commit = git(REPO, "rev-parse", "--short", "HEAD").strip()
-        ziel = args.out / "reports" / f"{stamp[:-2]}.md"
+        commit = commit_angabe(REPO)
+        ziel = args.out / "reports" / f"{stamp}.md"
         text = bericht(ergebnisse, args.runs, commit, args.model, jetzt, frueherer(ziel.parent, ziel.name))
         if gate.check_text(REPO, text, ziel.relative_to(args.out).as_posix()):
             raise SetupError("Bericht enthält ein mögliches Secret und wurde nicht geschrieben (Rohdaten: %s)" % (args.out / "runs" / stamp))

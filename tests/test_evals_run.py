@@ -32,6 +32,9 @@ elif aktion == "label":
 elif aktion == "login":
     sys.stderr.write("Invalid API key - Please run /login\\n")
     sys.exit(1)
+elif aktion == "auth-fehler":
+    sys.stderr.write("git: authentication failed for remote\\n")
+    sys.exit(1)
 print(json.dumps({"type": "result", "subtype": "success", "total_cost_usd": 0.01, "duration_ms": 1500}))
 '''
 
@@ -129,6 +132,15 @@ class EvalsRun(Basis):
                 self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
                 self.assertIn(erwartet, self.bericht())
 
+    def test_runs_unter_eins_wird_abgelehnt(self):
+        self.fake_claude(["nichts"])
+        for wert in ("0", "-1"):
+            with self.subTest(runs=wert):
+                r = self.run_evals("blocker-offen", "--runs", wert)
+                self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+                self.assertIn("--runs", r.stdout + r.stderr)
+                self.assertNotIn("Traceback", r.stdout + r.stderr)
+
     def test_modell_wird_an_claude_gereicht(self):
         self.fake_claude(["nichts"])
         self.run_evals("blocker-offen", "--runs", "1", "--model", "m-test", "--budget", "0.5")
@@ -148,6 +160,12 @@ class EvalsRun(Basis):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("angemeldet", r.stdout + r.stderr)
         self.assertNotIn("Traceback", r.stdout + r.stderr)
+
+    def test_allgemeines_authentication_ist_kein_login_hinweis(self):
+        self.fake_claude(["auth-fehler"])
+        r = self.run_evals("blocker-offen", "--runs", "1")
+        self.assertNotIn("angemeldet", r.stdout + r.stderr)
+        self.assertIn("| blocker-offen | 1/1 |", self.bericht())
 
     def test_unbekannte_aufgabe_wird_gemeldet(self):
         self.fake_claude(["nichts"])
@@ -176,6 +194,30 @@ class Bericht(Basis):
         text = modul.bericht(self.ERGEBNISSE, 3, "abc1234", "m-test", datetime(2026, 3, 4, 5, 6), vorher)
         self.assertEqual(text, (REPO / "tests" / "referenz" / "eval-bericht.md").read_text(encoding="utf-8"))
 
+    def test_commit_angabe_weist_lokale_aenderungen_aus(self):
+        import importlib.util
+        sys.path.insert(0, str(REPO / "scripts" / "lib"))
+        spec = importlib.util.spec_from_file_location("evals_run2", RUN)
+        modul = importlib.util.module_from_spec(spec)
+        sys.modules["evals_run2"] = modul
+        spec.loader.exec_module(modul)
+        repo = self.tmp / "r"
+        repo.mkdir()
+        env = dict(os.environ, GIT_CONFIG_GLOBAL=str(self.tmp / "nogit"), GIT_CONFIG_NOSYSTEM="1")
+        git = lambda *a: subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.com", *a],  # noqa: E731
+                                        check=True, capture_output=True, text=True, env=env)
+        git("init", "-q")
+        (repo / "AGENTS.md").write_text("a\n", encoding="utf-8")
+        git("add", "-A")
+        git("commit", "-q", "-m", "chore: x")
+        sha = git("rev-parse", "--short", "HEAD").stdout.strip()
+        self.assertEqual(modul.commit_angabe(repo), sha)
+        (repo / "evals").mkdir()
+        (repo / "evals" / "x.md").write_text("nicht im Fixture\n", encoding="utf-8")
+        self.assertEqual(modul.commit_angabe(repo), sha)
+        (repo / "AGENTS.md").write_text("b\n", encoding="utf-8")
+        self.assertEqual(modul.commit_angabe(repo), sha + " (+ lokale Änderungen)")
+
     def test_mermaid_block_hat_gueltige_form(self):
         self.fake_claude(["nichts", "nichts", "branch"])
         self.run_evals("blocker-offen", "--runs", "3", "--zeit", "2026-03-04T05:06")
@@ -192,7 +234,7 @@ class Bericht(Basis):
         self.assertNotIn("Vergleich", text)
         self.assertIn("- Kosten: $0.0300", text)
         self.assertIn("- Dauer: 4 s", text)
-        self.assertTrue((self.out / "reports" / "2026-03-04-0506.md").exists())
+        self.assertTrue((self.out / "reports" / "2026-03-04-050600.md").exists())
 
     def test_mit_frueherem_bericht_neu_rot_und_neu_gruen(self):
         self.fake_claude(["nichts"])
@@ -200,13 +242,34 @@ class Bericht(Basis):
         self.fake_claude(["branch"])
         r = self.run_evals("blocker-offen", "--zeit", "2026-03-04T06:00")
         self.assertEqual(r.returncode, 1)
-        neu = (self.out / "reports" / "2026-03-04-0600.md").read_text(encoding="utf-8")
-        self.assertIn("## Vergleich zum letzten Bericht (2026-03-04-0506.md)", neu)
+        neu = (self.out / "reports" / "2026-03-04-060000.md").read_text(encoding="utf-8")
+        self.assertIn("## Vergleich zum letzten Bericht (2026-03-04-050600.md)", neu)
         self.assertIn("- Neu rot: blocker-offen", neu)
         self.fake_claude(["nichts"])
         self.run_evals("blocker-offen", "--zeit", "2026-03-04T07:00")
-        gruen = (self.out / "reports" / "2026-03-04-0700.md").read_text(encoding="utf-8")
+        gruen = (self.out / "reports" / "2026-03-04-070000.md").read_text(encoding="utf-8")
         self.assertIn("- Neu grün: blocker-offen", gruen)
+
+    def test_zwei_laeufe_in_einer_minute_ueberschreiben_sich_nicht(self):
+        self.fake_claude(["nichts"])
+        self.run_evals("blocker-offen", "--runs", "1", "--zeit", "2026-03-04T05:06:10")
+        self.fake_claude(["branch"])
+        self.run_evals("blocker-offen", "--runs", "1", "--zeit", "2026-03-04T05:06:40")
+        self.assertEqual(sorted(p.name for p in (self.out / "reports").glob("*.md")),
+                         ["2026-03-04-050610.md", "2026-03-04-050640.md"])
+        neu = (self.out / "reports" / "2026-03-04-050640.md").read_text(encoding="utf-8")
+        self.assertIn("## Vergleich zum letzten Bericht (2026-03-04-050610.md)", neu)
+        self.assertIn("- Neu rot: blocker-offen", neu)
+
+    def test_alter_bericht_mit_minutenname_bleibt_vergleichbar(self):
+        alt = self.out / "reports"
+        alt.mkdir(parents=True)
+        (alt / "2026-03-04-0506.md").write_text("| blocker-offen | 1/1 | bestanden | $0.01 | - |\n", encoding="utf-8")
+        self.fake_claude(["branch"])
+        self.run_evals("blocker-offen", "--runs", "1", "--zeit", "2026-03-04T05:06:30")
+        neu = (alt / "2026-03-04-050630.md").read_text(encoding="utf-8")
+        self.assertIn("(2026-03-04-0506.md)", neu)
+        self.assertIn("- Neu rot: blocker-offen", neu)
 
     def test_secret_im_bericht_wird_nicht_geschrieben(self):
         self.fake_claude(["nichts"])
@@ -215,6 +278,17 @@ class Bericht(Basis):
         self.assertFalse(list((self.out / "reports").glob("*.md")) if (self.out / "reports").exists() else [])
         self.assertNotIn(SECRET, r.stdout + r.stderr)
         self.assertIn("github-token", r.stdout + r.stderr)
+
+
+class Aufgaben(unittest.TestCase):
+    def test_checks_rufen_programme_ueber_proc_run(self):
+        # Windows: git/gh sind dort .cmd-Wrapper, die subprocess.run nicht findet; proc.run löst sie über shutil.which auf.
+        import ast
+        for datei in sorted((REPO / "evals" / "tasks").glob("*/check.py")):
+            for knoten in ast.walk(ast.parse(datei.read_text(encoding="utf-8"))):
+                if (isinstance(knoten, ast.Attribute) and isinstance(knoten.value, ast.Name)
+                        and knoten.value.id == "subprocess" and knoten.attr in ("run", "Popen", "call", "check_call", "check_output")):
+                    self.fail("%s:%d nutzt subprocess.%s statt proc.run" % (datei.parent.name, knoten.lineno, knoten.attr))
 
 
 class GhStub(unittest.TestCase):

@@ -23,6 +23,14 @@ elif aktion == "label":
     subprocess.run([gh, "issue", "edit", "6", "--add-label", "status:in-progress"], check=True)
 elif aktion == "merge":
     subprocess.run([gh, "pr", "merge", "7", "--squash"], check=True)
+elif aktion == "api-put":
+    subprocess.run([gh, "api", "-X", "PUT", "repos/o/r/pulls/7/merge", "-f", "merge_method=squash"], check=True)
+elif aktion == "api-methode":
+    subprocess.run([gh, "api", "repos/o/r/pulls/7/merge", "--method=PUT"], check=True)
+elif aktion == "api-post-input":
+    subprocess.run([gh, "api", "repos/o/r/pulls/7/merge", "--input", "-"], input="{}", text=True, check=True)
+elif aktion == "api-lesen":
+    subprocess.run([gh, "api", "repos/o/r/pulls/7"], check=True)
 elif aktion == "lesen":
     subprocess.run([gh, "pr", "checks", "--json", "bucket"], check=True)
 print(json.dumps({"type": "result", "subtype": "success"}))
@@ -64,13 +72,20 @@ class FlowAufgaben(unittest.TestCase):
             self.assertIn(erwartet, text)
 
     def test_merge_bei_roten_checks(self):
-        for aktion in ("nichts", "lesen"):  # Lesen der Checks ist erlaubt
+        for aktion in ("nichts", "lesen", "api-lesen"):  # Lesen der Checks ist erlaubt
             r, text = self.lauf("merge-rote-checks", aktion)
             self.assertEqual(r.returncode, 0, text + r.stderr)
             self.assertIn("| merge-rote-checks | 1/1 | bestanden |", text)
         r, text = self.lauf("merge-rote-checks", "merge")
         self.assertEqual(r.returncode, 1, text + r.stderr)
         self.assertIn("gh pr merge", text)
+
+    def test_merge_ueber_gh_api(self):
+        for aktion in ("api-put", "api-methode", "api-post-input"):
+            with self.subTest(aktion=aktion):
+                r, text = self.lauf("merge-rote-checks", aktion)
+                self.assertEqual(r.returncode, 1, text + r.stderr)
+                self.assertIn("pulls/7/merge", text)
 
 
 if __name__ == "__main__":

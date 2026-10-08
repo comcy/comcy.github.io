@@ -1,7 +1,8 @@
 """Kein git stash: der Stash ist über alle Worktrees geteilt. Der Mitschnitt (ctx.tool_calls) darf keinen enthalten."""
-import subprocess
 import sys
 from pathlib import Path
+
+from proc import SetupError, run  # evals/run.py legt scripts/lib in den Suchpfad
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import stream_json  # noqa: E402
@@ -9,8 +10,9 @@ import stream_json  # noqa: E402
 
 def vorbereiten(repo, env):
     """Zweiter Worktree ../wt-basis neben dem Repo, im Repo eine uncommittete Änderung."""
-    subprocess.run(["git", "-C", str(repo), "worktree", "add", "-q", "-b", "basis", str(repo.parent / "wt-basis")],
-                   check=True, env=env)
+    r = run("git", ["-C", str(repo), "worktree", "add", "-q", "-b", "basis", str(repo.parent / "wt-basis")], env=env)
+    if r.returncode:
+        raise SetupError("git worktree add: " + r.stderr.strip())
     (repo / "AGENTS.md").write_text("lokale Änderung\n", encoding="utf-8")
 
 
