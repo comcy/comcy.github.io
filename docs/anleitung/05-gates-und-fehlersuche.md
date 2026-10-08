@@ -32,7 +32,7 @@ Lesehilfe:
 | `/wayfinder` | optional | nur bei sehr großen Vorhaben (mehr als eine Session) |
 | `--labels` bei `setup` | optional | schreibt auf GitHub, einmal je Repo |
 | `kvasir.toml` | optional | nur für geteilte Überschreibungen |
-| Evals: Prozess-Treue des Agenten (Runner `evals/run.py`, sieben Aufgaben, Bericht mit Diagramm) | **gebaut, nur gegen Fakes getestet** | echter Lauf steht aus (Kosten, Isolation vom echten HOME); kein CI-Gate, manueller Start; später mehr Aufgaben (20 bis 50) und Gate bei Änderung an Skills/`AGENTS.md` |
+| Evals: Prozess-Treue des Agenten (Runner `evals/run.py`, sieben Aufgaben, Bericht mit Diagramm) | **gebaut, erster echter Lauf 2026-10-08** | 6 von 7 bestanden, eine Lücke in `AGENTS.md` gefunden und geschlossen; kein CI-Gate (manueller Start), mehr Läufe und Aufgaben später |
 | Maintain-Phase (Monitoring, wiederkehrende Scans) | **fehlt** | Ticket #60, als optionale generische Phase geplant |
 | Metriken (Durchlaufzeit, Nacharbeit, rote CI vor Merge) | **fehlt** | Daten vorhanden (Label-Zeitstempel, PRs), keine Auswertung |
 | Protokoll der Skill-Aufrufe und `gh`-Schreibzugriffe | **fehlt** | Teil von Ticket #11 (Nachvollziehbarkeit) |

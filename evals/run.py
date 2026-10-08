@@ -117,11 +117,13 @@ def baue_lauf(aufgabe, work, base_env):
 
 def starte_agent(prompt, cwd, env, model=None, budget=1.0):
     """Einzige Stelle, die `claude` aufruft; ein anderer Runner (SDK) ersetzt nur diese Funktion."""
+    # Isolation (im echten Lauf gemessen): ohne diese Flags liefen Hooks, Plugins, MCP-Server und Auto-Memory aus dem echten HOME mit.
     args = ["-p", prompt, "--max-budget-usd", str(budget), "--allowedTools", TOOLS,
-            "--permission-mode", "acceptEdits", "--output-format", "stream-json", "--verbose"]
+            "--permission-mode", "acceptEdits", "--output-format", "stream-json", "--verbose",
+            "--setting-sources", "project,local", "--strict-mcp-config"]
     if model:
         args += ["--model", model]
-    return proc.run("claude", args, cwd=cwd, env=env, timeout=AGENT_TIMEOUT)
+    return proc.run("claude", args, cwd=cwd, env=dict(env, CLAUDE_CODE_DISABLE_AUTO_MEMORY="1"), timeout=AGENT_TIMEOUT)
 
 
 def lade_modul(aufgabe):
