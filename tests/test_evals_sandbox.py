@@ -56,7 +56,7 @@ class SandboxBefehl(unittest.TestCase):
             home = Path(t)
             (home / ".claude").mkdir()  # .claude.json fehlt -> kein Bind
             cmd = run.sandbox_befehl("/w", home)
-        self.assertEqual(cmd, ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--bind", "/w", "/w",
+        self.assertEqual(cmd, ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--bind", "/w", "/w",
                                "--bind", str(home / ".claude"), str(home / ".claude"), "--unshare-pid", "--die-with-parent", "--"])
 
     def test_beide_konfig_pfade_gebunden_wenn_vorhanden(self):
@@ -101,7 +101,9 @@ class SandboxLauf(Basis):
     def test_schreiben_ausserhalb_scheitert_innerhalb_geht(self):
         skript = self.tmp / "schreiber.py"
         skript.write_text(SCHREIBER, encoding="utf-8")
-        aussen = self.tmp / "aussen.txt"
+        # außerhalb von /tmp (dort liegt in der Sandbox ein privates, beschreibbares tmpfs): /var/tmp ist schreibgeschützt eingebunden
+        aussen = Path("/var/tmp") / ("evals-aussen-%d.txt" % os.getpid())
+        self.addCleanup(lambda: aussen.unlink(missing_ok=True))
         env = self.stubs.env(extra_path=[os.environ["PATH"]])
         env["AUSSEN"] = str(aussen)
         r = self.run_evals("blocker-offen", "--runs", "1", "--adapter", str(skript), "--sandbox", "bwrap", env=env)
