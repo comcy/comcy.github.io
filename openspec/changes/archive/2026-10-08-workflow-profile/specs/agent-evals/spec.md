@@ -8,7 +8,7 @@ Der Runner SHALL den Agenten über einen Adapter starten (`--adapter <programm>`
 - **THEN** laufen dieselben Aufgaben und Prüfungen unverändert
 
 ### Requirement: Nicht prüfbar statt Fehler
-Liefert ein Adapter kein Feld `tool_calls`, SHALL der Bericht Aufgaben, die den Mitschnitt brauchen, als "nicht prüfbar" ausweisen und MUST sie nicht als durchgefallen werten. Ein Adapter-Exit-Code ungleich 0 ist ein Lauffehler.
+Liefert ein Adapter kein Feld `tool_calls`, SHALL der Bericht Aufgaben, die den Mitschnitt brauchen, als "nicht prüfbar" ausweisen und MUST sie nicht als durchgefallen werten. Ein Adapter-Exit-Code ungleich 0 oder eine Antwort ohne gültiges JSON MUST den Lauf mit Exit-Code 2 und einer Meldung abbrechen (kein Bericht). Ein nicht leeres Feld `error` bei Exit-Code 0 lässt diesen einen Lauf durchfallen, mit `Adapter-Fehler: <text>` als erster Prüffehler.
 
 #### Scenario: Adapter ohne Mitschnitt
 - **WHEN** der Adapter `tool_calls` nicht liefert
