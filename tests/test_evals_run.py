@@ -64,7 +64,7 @@ class Basis(unittest.TestCase):
         env = env or self.stubs.env(extra_path=[os.environ["PATH"]])
         env["FAKE_PLAN"] = str(self.plan)
         env["GIT_CONFIG_GLOBAL"] = str(self.tmp / "nogit")  # echte Git-Konfiguration bleibt außen vor
-        return subprocess.run([sys.executable, str(RUN), "--out", str(self.out), *args], capture_output=True,
+        return subprocess.run([sys.executable, str(RUN), "--sandbox", "none", "--out", str(self.out), *args], capture_output=True,
                               text=True, encoding="utf-8", env=env)
 
     def bericht(self):

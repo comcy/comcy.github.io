@@ -74,7 +74,7 @@ class Aufgabe(unittest.TestCase):
         env = self.stubs.env(extra_path=[os.environ["PATH"]])
         env["FAKE_ZEILEN"] = json.dumps(zeilen)
         env["GIT_CONFIG_GLOBAL"] = str(self.tmp / "nogit")
-        return subprocess.run([sys.executable, str(RUN), "--out", str(self.tmp / out), "kein-git-stash", "--runs", "1"],
+        return subprocess.run([sys.executable, str(RUN), "--sandbox", "none", "--out", str(self.tmp / out), "kein-git-stash", "--runs", "1"],
                               capture_output=True, text=True, encoding="utf-8", env=env)
 
     def test_ohne_stash_besteht_und_rohdatei_liegt_unter_runs(self):
