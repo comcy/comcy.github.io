@@ -14,12 +14,16 @@ STATES_FILE = "states.tsv"
 TRANSITIONS_FILE = "transitions.tsv"
 PHASES_FILE = "phases.tsv"
 DETECTORS_FILE = "detectors.tsv"
+SKILLS_FILE = "skills.tsv"
+ROLES_FILE = "roles.tsv"
 
 STATE_KINDS = ("triage", "status", "terminal")
 STATE_REQUIRED = ("id", "kind", "color", "description")
 TRANSITION_REQUIRED = ("from", "to", "trigger", "guard")
 PHASE_REQUIRED = ("id", "name", "tool", "done_when", "level")
 PHASE_LEVELS = ("required", "optional")
+SKILL_REQUIRED = ("skill", "phase", "level", "source", "hint", "manual")
+ROLE_REQUIRED = ("role", "phases", "allowed_tools", "human_gate", "description")
 DETECTOR_REQUIRED = ("name", "arg", "description")
 
 
@@ -238,6 +242,53 @@ def check_phases(table: Table, vokabular: dict[str, str] | None, findings: list[
         vorher = zeile
 
 
+def check_profile(phases: Table, skills: Table | None, roles: Table | None, findings: list[Finding]) -> None:
+    """skills.tsv und roles.tsv: Spalten, Werte, Verweise auf Phasen und die Abdeckung der aktiven Pflichtphasen."""
+    phasen = {r.values["id"]: r for r in phases.rows}
+    gedeckt: set[str] = set()
+    mit_rolle: set[str] = set()
+    if skills is not None and missing_columns(skills, SKILL_REQUIRED, findings):
+        for z in skills.rows:
+            v = z.values
+            if not v["skill"]:
+                findings.append(Finding(skills.file, z.line, "error", "skill ist leer, '-' steht für keinen"))
+            if v["level"] not in ("", *PHASE_LEVELS):
+                findings.append(Finding(skills.file, z.line, "error", f"ungültige Stufe '{v['level']}'"))
+            if v["manual"] not in ("", "yes", "no"):
+                findings.append(Finding(skills.file, z.line, "error", f"manual muss yes oder no sein, nicht '{v['manual']}'"))
+            if v.get("enabled", "yes") not in ("yes", "no", ""):
+                findings.append(Finding(skills.file, z.line, "error", f"enabled muss yes oder no sein, nicht '{v['enabled']}'"))
+            if v["phase"] not in phasen:
+                findings.append(Finding(skills.file, z.line, "error", f"unbekannte Phase '{v['phase']}'"))
+            elif not is_enabled(phasen[v["phase"]]):
+                findings.append(Finding(skills.file, z.line, "warning", f"Phase '{v['phase']}' ist abgeschaltet"))
+            elif is_enabled(z) and (v["manual"] == "yes" or v["skill"] not in ("", "-")):
+                gedeckt.add(v["phase"])
+    if roles is not None and missing_columns(roles, ROLE_REQUIRED, findings):
+        for z in roles.rows:
+            v = z.values
+            if not v["role"]:
+                findings.append(Finding(roles.file, z.line, "error", "role ist leer"))
+            if v["human_gate"] not in ("yes", "no"):
+                findings.append(Finding(roles.file, z.line, "error", f"human_gate muss yes oder no sein, nicht '{v['human_gate']}'"))
+            ids = [p.strip() for p in v["phases"].split(",") if p.strip()]
+            for p in ids:
+                if p not in phasen:
+                    findings.append(Finding(roles.file, z.line, "error", f"unbekannte Phase '{p}'"))
+            if is_enabled(z):
+                if not ids:
+                    findings.append(Finding(roles.file, z.line, "warning", f"Rolle '{v['role']}' ohne Phase"))
+                mit_rolle.update(ids)
+    for z in phases.rows:
+        v = z.values
+        if v["level"] != "required" or not is_enabled(z):
+            continue
+        if skills is not None and v["id"] not in gedeckt:
+            findings.append(Finding(phases.file, z.line, "error", f"Phase {v['id']} hat weder Skill noch manual in {SKILLS_FILE}"))
+        if roles is not None and v["id"] not in mit_rolle:
+            findings.append(Finding(phases.file, z.line, "error", f"Phase {v['id']} ist keiner Rolle in {ROLES_FILE} zugeordnet"))
+
+
 def check_graph(states_table: Table, transitions_table: Table, findings: list[Finding]) -> None:
     """Warnungen: aktivierte Zustände ohne eingehenden Übergang (unerreichbar) oder ohne ausgehenden (Sackgasse)."""
     aktiv = [r for r in transitions_table.rows if is_enabled(r)]
@@ -262,6 +313,7 @@ def validate(root: Path) -> list[Finding]:
 
     states_table, transitions_table = laden(STATES_FILE), laden(TRANSITIONS_FILE)
     phases_table, detectors_table = laden(PHASES_FILE), laden(DETECTORS_FILE)
+    skills_table, roles_table = laden(SKILLS_FILE), laden(ROLES_FILE)
     vokabular = check_detectors(detectors_table, findings) if detectors_table else None
     states_ok = False
     if states_table is not None:
@@ -277,4 +329,6 @@ def validate(root: Path) -> list[Finding]:
             check_graph(states_table, transitions_table, findings)
     if phases_table is not None:
         check_phases(phases_table, vokabular, findings)
+        if all(c in phases_table.header for c in PHASE_REQUIRED):
+            check_profile(phases_table, skills_table, roles_table, findings)
     return sorted(findings, key=lambda f: (f.file, f.line, f.level, f.message))
