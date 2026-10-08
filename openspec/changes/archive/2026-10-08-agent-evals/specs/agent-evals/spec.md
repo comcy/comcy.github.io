@@ -8,11 +8,15 @@ Jede Eval-Aufgabe SHALL ein Ordner `evals/tasks/<id>/` sein mit `prompt.md` (Auf
 - **THEN** meldet `check` einen Fehler, wenn danach ein Branch oder ein `status:`-Label existiert
 
 ### Requirement: Isolierter Lauf
-Der Runner SHALL jede Aufgabe in einem frischen Wegwerf-Repo ausführen, das aus dem aktuellen Arbeitsstand von `AGENTS.md`, `docs/agents/`, `workflow/`, `scripts/`, `.githooks/`, `openspec/config.yaml` und `.agents/skills/` gebaut wird, mit einem Stub-`gh` vor dem PATH. Der Runner MUST verhindern, dass Läufe auf GitHub oder in das echte Repo schreiben, und SHALL Modell, Budget und erlaubte Tools je Lauf begrenzen.
+Der Runner SHALL jede Aufgabe in einem frischen Wegwerf-Repo ausführen, das aus dem aktuellen Arbeitsstand von `AGENTS.md`, `docs/agents/`, `workflow/`, `scripts/`, `.githooks/`, `openspec/config.yaml` und `.agents/skills/` gebaut wird, mit einem Stub-`gh` vor dem PATH, der nur unter seinem Arbeitsverzeichnis schreibt. Der Agent MUST ohne Nutzer-Einstellungen laufen (keine Hooks, Plugins, MCP-Server und kein Auto-Memory aus dem echten HOME) und SHALL Modell, Budget und erlaubte Tools je Lauf begrenzen. Eine Betriebssystem-Sandbox, die Schreibzugriffe des Agenten außerhalb des Wegwerf-Repos verhindert, ist nicht Teil dieser Spec (Folgeticket).
 
-#### Scenario: Kein Schreibzugriff auf das echte Repo
-- **WHEN** ein Lauf endet
-- **THEN** ist `git status` des echten Repos unverändert und der Stub hat nur in sein Arbeitsverzeichnis geschrieben
+#### Scenario: Keine Nutzer-Einstellungen
+- **WHEN** der Agent gestartet wird
+- **THEN** erhält `claude` `--setting-sources project,local`, `--strict-mcp-config` und `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`
+
+#### Scenario: Stub schreibt nur in sein Verzeichnis
+- **WHEN** der Stub-`gh` außerhalb seines Arbeitsverzeichnisses schreiben soll
+- **THEN** bricht er ab und das echte Repo bleibt unverändert
 
 ### Requirement: Mehrfachläufe und Bestehensregel
 Der Runner SHALL jede Aufgabe standardmäßig dreimal ausführen und sie als bestanden werten, wenn mindestens zwei Läufe bestehen. Die Anzahl der Läufe MUST über `--runs` einstellbar sein.
