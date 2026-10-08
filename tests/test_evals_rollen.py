@@ -25,14 +25,14 @@ class Rollen(Basis):
 
     def test_tools_entsprechen_der_rolle(self):
         a = self.adapter({"tool_calls": []})
-        r = self.run_evals("--runs", "1", "--adapter", a, *self.aufgaben(pruefer="reviewer", planer="planner", mensch="human"))
+        r = self.run_evals("--runs", "1", "--adapter", a, "--ohne-abgeleitete", *self.aufgaben(pruefer="reviewer", planer="planner", mensch="human"))
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(sorted(self.tools(), key=len),
                          [[], ["Read", "Glob", "Grep", "Bash"], ["Read", "Glob", "Grep", "Bash"]])
 
     def test_ohne_role_oder_datei_gilt_builder(self):
         a = self.adapter({"tool_calls": []})
-        r = self.run_evals("--runs", "1", "--adapter", a, *self.aufgaben(ohne_datei=None, ohne_feld=""))
+        r = self.run_evals("--runs", "1", "--adapter", a, "--ohne-abgeleitete", *self.aufgaben(ohne_datei=None, ohne_feld=""))
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(self.tools(), [["Bash", "Read", "Edit", "Write", "Glob", "Grep"]] * 2)
 

@@ -11,7 +11,7 @@
 - [x] 4.1 `role` in `task.json`, `allowed_tools` aus `roles.tsv` an den Adapter
 
 ## 5. Abgeleitete Aufgaben
-- [ ] 5.1 `evals/derive.py` für die abbildbaren Detektoren, Bericht-Abschnitt "nicht ableitbar", Tests
+- [x] 5.1 `evals/derive.py` für die abbildbaren Detektoren, Bericht-Abschnitt "nicht ableitbar", Tests
 
 ## 6. Doku und Probelauf
 - [ ] 6.1 `docs/workflow.md`, `docs/anleitung/04` und Landkarte; Trockenlauf mit einem zweiten Adapter (Fake); echter Lauf nach Freigabe
