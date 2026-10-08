@@ -74,6 +74,11 @@ class Profil(unittest.TestCase):
         self.edit("skills.tsv", "to-tickets\t3", "to-tickets\t9")
         self.assert_fund(run(self.root), "skills.tsv", "'9'", "Fehler", 1)
 
+    def test_roles_enabled_muss_yes_oder_no_sein(self):
+        self.put("roles.tsv", FILES["roles.tsv"].replace("human_gate\tdescription", "human_gate\tdescription\tenabled")
+                 .replace("Plant", "Plant\tyes").replace("Gibt frei", "Gibt frei\tbanane"))
+        self.assert_fund(run(self.root), "roles.tsv", "enabled muss yes oder no sein, nicht 'banane'", "Fehler", 1)
+
     def test_unbekannte_phase_in_rolle(self):
         self.edit("roles.tsv", "planner\t0,3", "planner\t0,3,9")
         self.assert_fund(run(self.root), "roles.tsv", "'9'", "Fehler", 1)

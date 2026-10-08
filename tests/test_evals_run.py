@@ -165,7 +165,8 @@ class EvalsRun(Basis):
         self.fake_claude(["auth-fehler"])
         r = self.run_evals("blocker-offen", "--runs", "1")
         self.assertNotIn("angemeldet", r.stdout + r.stderr)
-        self.assertIn("| blocker-offen | 1/1 |", self.bericht())
+        self.assertIn("| blocker-offen | 0/1 | durchgefallen |", self.bericht())  # error des Adapters = Lauf fehlgeschlagen
+        self.assertIn("Adapter-Fehler: claude Exit-Code 1", self.bericht())
 
     def test_unbekannte_aufgabe_wird_gemeldet(self):
         self.fake_claude(["nichts"])

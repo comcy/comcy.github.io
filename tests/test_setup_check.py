@@ -200,6 +200,16 @@ class Skills(Basis):
         self.assertIn("/plugin install p", r.stdout)
         self.assertIn("1 Fehler", r.stdout)
 
+    def test_doppelte_zeile_wird_einmal_gemeldet_und_gezaehlt(self):
+        self.alle()
+        (self.home / ".claude" / "skills" / "triage" / "SKILL.md").unlink()
+        pfad = self.repo / "workflow" / "skills.tsv"
+        pfad.write_text(pfad.read_text(encoding="utf-8") + "triage\t0\trequired\tplugin p\t/plugin install p\tno\n",
+                        encoding="utf-8", newline="\n")
+        r = self.check()
+        self.assertEqual(r.stdout.count("FEHLT"), 1, r.stdout)
+        self.assertIn("1 Fehler", r.stdout)
+
     def test_optionaler_skill_fehlt_nur_hinweis(self):
         self.alle()  # tdd (Phase 4, optional) fehlt
         r = self.check()

@@ -1,4 +1,4 @@
-# Skills je Phase (Zeile je Phase). level: required oder optional (leer = level der Phase). source/hint: Anzeige und Installationsbefehl.
+# Skills je Phase (mehrere Zeilen je Phase möglich, eine je Skill). level: required oder optional (leer = level der Phase). source/hint: Anzeige und Installationsbefehl.
 # manual: yes = die Phase darf ohne Skill von Hand laufen (skill dann -). enabled (optional): no schaltet eine Zeile ab.
 skill	phase	level	source	hint	manual
 -	S	required	scripts/setup.py	python3 scripts/setup.py	yes

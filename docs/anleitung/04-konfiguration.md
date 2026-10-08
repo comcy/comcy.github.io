@@ -132,7 +132,7 @@ python3 scripts/flow.py validate --strict   # Warnungen werden zu Fehlern (so l�
 
 ### `skills.tsv`: Skills je Phase
 
-Eine Zeile je Phase (und Skill). Spalten: `skill` (`-` = keiner), `phase`, `level` (`required`, `optional`, leer = Stufe der Phase), `source` (Anzeige), `hint` (Installationsbefehl), `manual` (`yes` = die Phase darf ohne Skill von Hand laufen).
+Mehrere Zeilen je Phase möglich, eine je Skill. Spalten: `skill` (`-` = keiner), `phase`, `level` (`required`, `optional`, leer = Stufe der Phase), `source` (Anzeige), `hint` (Installationsbefehl), `manual` (`yes` = die Phase darf ohne Skill von Hand laufen).
 
 ```
 skill	phase	level	source	hint	manual
@@ -200,7 +200,7 @@ HINWEIS Skills für claude nicht prüfbar (keine skill_paths in scripts/setup.d/
 
 ## `evals/`: Adapter und abgeleitete Aufgaben
 
-Die Evals (`python3 evals/run.py`, siehe `docs/workflow.md`) prüfen, ob ein Agent den Prozess einhält. Welcher Agent läuft, bestimmt ein **Adapter**: ein Programm, das der Runner mit `--adapter <programm>` aufruft (Standard `evals/adapters/claude.py`). `.py` läuft über den eigenen Python, alles andere direkt (Pfad oder Name im PATH), in jeder Sprache.
+Die Evals (`python3 evals/run.py`, siehe `docs/workflow.md`) prüfen, ob ein Agent den Prozess einhält. Welcher Agent läuft, bestimmt ein **Adapter**: ein Programm, das der Runner mit `--adapter <programm>` aufruft (Standard `evals/adapters/claude.py`). `.py` läuft über den eigenen Python, alles andere direkt (Pfad oder Name im PATH), in jeder Sprache. Unter Windows braucht ein Adapter, der kein Python-Skript ist, eine ausführbare Datei (`.exe` oder `.cmd` im PATH); ein sh-Skript läuft nur unter Linux/macOS (Git-Bash wird nicht vorausgesetzt).
 
 ### Adapter-Vertrag
 
@@ -228,7 +228,7 @@ Der Adapter schreibt **ein JSON-Objekt auf stdout**:
 Regeln:
 
 - **"nicht prüfbar":** Fehlt `tool_calls` (Feld fehlt oder `null`), laufen Aufgaben mit `BRAUCHT_MITSCHNITT = True` in `check.py` (heute `kein-git-stash`) nicht. Der Bericht führt sie als "nicht prüfbar", nie als "durchgefallen"; die übrigen Aufgaben laufen normal. Wer keinen Mitschnitt liefern kann, lässt das Feld weg, statt `[]` zu melden (`[]` heißt "der Agent hat nichts getan").
-- **Exit-Code 0:** Der Adapter hat gearbeitet. Scheiterte der Agent, steht das in `error`.
+- **Exit-Code 0:** Der Adapter hat gearbeitet. Scheiterte der Agent, steht das in `error`; ein nicht leeres `error` lässt den Lauf durchfallen (erster Prüffehler `Adapter-Fehler: <text>`).
 - **Exit-Code ungleich 0 oder kein JSON-Objekt auf stdout:** Der Adapter konnte nicht arbeiten (Programm fehlt, nicht angemeldet). Der Runner bricht mit Meldung (Adaptername und stderr) und Exit-Code 2 ab, es entsteht kein Bericht.
 
 Vollständiges Beispiel, `evals/adapters/beispiel.py` (nur Standardbibliothek, läuft wirklich, tut nichts; Test: `tests/test_evals_beispiel_adapter.py`):

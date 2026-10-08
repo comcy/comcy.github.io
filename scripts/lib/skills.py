@@ -32,11 +32,15 @@ def required_skills(root: Path) -> list[dict[str, str]]:
             or not missing_columns(skills, workflow.SKILL_REQUIRED, funde):
         return []
     aktiv = {z.values["id"]: z.values["level"] for z in phasen.rows if workflow.is_enabled(z)}
-    ergebnis = []
+    ergebnis: list[dict[str, str]] = []
+    gesehen: set[tuple[str, str]] = set()
     for z in skills.rows:
         v = z.values
         if not workflow.is_enabled(z) or v["skill"] in ("", "-") or v["phase"] not in aktiv:
             continue
+        if (v["skill"], v["phase"]) in gesehen:
+            continue
+        gesehen.add((v["skill"], v["phase"]))
         ergebnis.append({**v, "level": v["level"] or aktiv[v["phase"]]})
     return ergebnis
 
