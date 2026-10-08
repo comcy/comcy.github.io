@@ -130,7 +130,7 @@ Fast alles in diesem Block hat ein Agent umgesetzt, den ich pro Ticket gestartet
 
 ## Noch zu dokumentieren
 
-- Voller Eval-Lauf (drei Läufe je Aufgabe, 2026-10-08): Die sieben handgeschriebenen Aufgaben bestanden alle 3 von 3, also stabil. Die acht abgeleiteten Aufgaben sind noch nicht auswertbar: ab etwa der 17. Sitzung traf der Lauf das Sitzungslimit des Abos (`You've hit your session limit`), sieben davon liefen nie. Ein Lauf des Satzes braucht rund 17 Minuten und 2,63 USD rechnerisch (bis zum Limit). Der Bericht wird nach dem Zurücksetzen des Limits wiederholt und erst dann eingecheckt.
+- Voller Eval-Lauf (drei Läufe je Aufgabe, 2026-10-08): Die sieben handgeschriebenen Aufgaben bestanden alle 3 von 3, also stabil. Von den acht abgeleiteten bestanden fünf 3 von 3; bei den drei Aufgaben "Ticket nach `closed`" lag der Fehler in meiner Ableitung (`issue_closed` ist dort das Ereignis, keine Vorbedingung), nicht im Agenten. Sie gelten jetzt als nicht ableitbar. Der erste volle Versuch traf außerdem das Sitzungslimit des Abos und lieferte falsche Durchfälle, daher bricht der Adapter bei einem Limit jetzt ab statt Aufgaben durchfallen zu lassen. Ein Satz kostet rund 17 bis 21 Minuten und rechnerisch 2,6 bis 3,7 USD (Abo-Kontingent, keine Rechnung).
 - Erster Lauf mit einem anderen Agenten oder Modell über einen eigenen Adapter.
 - Sandbox für den Agenten.
 - Overhead: Proposal, Specs und Tickets lohnen sich bei Werkzeug-Änderungen, bei Kleinigkeiten nicht (noch nicht gemessen).
