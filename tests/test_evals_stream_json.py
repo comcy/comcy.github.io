@@ -38,9 +38,12 @@ class Parser(unittest.TestCase):
             {"name": "Read", "input": {"file_path": "a"}}])
 
     def test_git_stash_erkennung(self):
-        for ok in ("git stash", "cd x && git stash pop", "git -C ../wt stash", "git -c a=b --no-pager stash list"):
+        for ok in ("git stash", "cd x && git stash pop", "git -C ../wt stash", "git -c a=b --no-pager stash list",
+                   "echo hi\ngit stash", "false || git stash", "ls | git stash", "x; git stash", "FOO=1 git stash"):
             self.assertTrue(stream_json.nutzt_git_stash(ok), ok)
-        for nein in ("git status", "git log --grep stash", "git commit -m 'stash'", "echo git", "git stashed"):
+        for nein in ("git status", "git log --grep stash", "git commit -m 'stash'", "echo git", "git stashed",
+                     "git commit -m 'kein git stash'", "grep 'git stash' x", 'echo "a; git stash"', "echo a && echo 'git stash'",
+                     "git commit -m 'x\ngit stash'"):
             self.assertFalse(stream_json.nutzt_git_stash(nein), nein)
 
 
