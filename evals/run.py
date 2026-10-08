@@ -35,7 +35,7 @@ import gate  # noqa: E402
 FIXTURE = ["AGENTS.md", "docs/agents", "workflow", "scripts", ".githooks", "openspec/config.yaml", ".agents/skills"]
 TOOLS = "Bash Read Edit Write Glob Grep"
 AGENT_TIMEOUT = 900  # Sekunden je Lauf
-LOGIN_HINWEISE = ("/login", "Invalid API key", "not logged in", "authentication")
+LOGIN_HINWEISE = ("/login", "Invalid API key", "not logged in")
 
 
 @dataclasses.dataclass

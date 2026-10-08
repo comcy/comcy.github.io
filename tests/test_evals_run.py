@@ -32,6 +32,9 @@ elif aktion == "label":
 elif aktion == "login":
     sys.stderr.write("Invalid API key - Please run /login\\n")
     sys.exit(1)
+elif aktion == "auth-fehler":
+    sys.stderr.write("git: authentication failed for remote\\n")
+    sys.exit(1)
 print(json.dumps({"type": "result", "subtype": "success", "total_cost_usd": 0.01, "duration_ms": 1500}))
 '''
 
@@ -157,6 +160,12 @@ class EvalsRun(Basis):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("angemeldet", r.stdout + r.stderr)
         self.assertNotIn("Traceback", r.stdout + r.stderr)
+
+    def test_allgemeines_authentication_ist_kein_login_hinweis(self):
+        self.fake_claude(["auth-fehler"])
+        r = self.run_evals("blocker-offen", "--runs", "1")
+        self.assertNotIn("angemeldet", r.stdout + r.stderr)
+        self.assertIn("| blocker-offen | 1/1 |", self.bericht())
 
     def test_unbekannte_aufgabe_wird_gemeldet(self):
         self.fake_claude(["nichts"])
