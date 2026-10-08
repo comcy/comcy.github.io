@@ -1,6 +1,8 @@
 """Rollen steuern die Tools der Evals: task.json (`role`, Standard builder) -> allowed_tools aus workflow/roles.tsv beim Adapter."""
+import importlib.util
 import json
 import shutil
+import sys
 import unittest
 
 import test_evals_adapter
@@ -50,6 +52,26 @@ class Rollen(Basis):
         self.assertIn("gibt-es-nicht", r.stderr)
         self.assertNotIn("Traceback", r.stderr)
         self.assertFalse(Path_exists(self.plan, ".req"))  # Agent nie gestartet
+
+    def test_abgeschaltete_rolle_ist_wie_unbekannt(self):
+        # run.py liest REPO/workflow/roles.tsv: Modul laden und REPO auf einen Wegwerf-Ordner umbiegen
+        spec = importlib.util.spec_from_file_location("run_rollen", REPO / "evals" / "run.py")
+        sys.path.insert(0, str(REPO / "scripts" / "lib"))
+        modul = importlib.util.module_from_spec(spec)
+        sys.modules["run_rollen"] = modul
+        spec.loader.exec_module(modul)
+        modul.REPO = self.tmp
+        (self.tmp / "workflow").mkdir()
+        (self.tmp / "workflow" / "roles.tsv").write_text(
+            "role\tphases\tallowed_tools\thuman_gate\tdescription\tenabled\n"
+            "builder\t4\tBash\tno\tBaut\tyes\nreviewer\t5\tRead\tno\tPrueft\tno\n", encoding="utf-8")
+        aufgabe = self.tmp / "aufgabe"
+        aufgabe.mkdir()
+        self.assertEqual(modul.rollen_tools(aufgabe), ["Bash"])
+        (aufgabe / "task.json").write_text(json.dumps({"role": "reviewer"}), encoding="utf-8")
+        with self.assertRaises(modul.SetupError) as e:
+            modul.rollen_tools(aufgabe)
+        self.assertIn("reviewer", str(e.exception))
 
 
 def Path_exists(plan, suffix):

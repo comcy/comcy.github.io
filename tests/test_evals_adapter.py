@@ -26,7 +26,7 @@ if plan.get("kaputt"):
     sys.exit(0)
 if plan.get("branch"):
     subprocess.run([shutil.which("git"), "branch", "feature/5-x"], cwd=anfrage["cwd"], check=True)
-antwort = {"result_text": "fertig", "cost_usd": 0.5, "duration_ms": 2000, "error": None}
+antwort = {"result_text": "fertig", "cost_usd": 0.5, "duration_ms": 2000, "error": plan.get("error")}
 if "tool_calls" in plan:
     antwort["tool_calls"] = plan["tool_calls"]
 print(json.dumps(antwort))
@@ -93,6 +93,14 @@ class FakeAdapter(Basis):
         self.assertIn("| kein-git-stash | - | nicht prüfbar |", text)
         self.assertNotIn("durchgefallen", text)
         self.assertIn("- Nicht prüfbar: 1 von 2 Aufgaben (kein-git-stash)", text)
+
+    def test_error_des_adapters_laesst_den_lauf_durchfallen(self):
+        a = self.adapter({"tool_calls": [], "error": "Agent abgestuerzt"})
+        r = self.run_evals("blocker-offen", "--runs", "1", "--adapter", a)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        text = self.bericht()
+        self.assertIn("| blocker-offen | 0/1 | durchgefallen |", text)
+        self.assertIn("Adapter-Fehler: Agent abgestuerzt", text)
 
     def test_adapter_exit_code_ist_lauffehler(self):
         a = self.adapter({"exit": 3})

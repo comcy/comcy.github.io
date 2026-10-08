@@ -68,7 +68,7 @@ def rollen_tools(aufgabe):
     if tabelle is None:
         raise SetupError("; ".join(f.format() for f in findings))
     for zeile in tabelle.rows:
-        if zeile.values.get("role") == rolle:
+        if zeile.values.get("role") == rolle and workflow.is_enabled(zeile):
             return [] if zeile.values["allowed_tools"] == "-" else zeile.values["allowed_tools"].split()
     raise SetupError("Aufgabe %s: Rolle '%s' fehlt in %s (vorhanden: %s)" % (
         aufgabe.name, rolle, tabelle.file, ", ".join(z.values.get("role", "") for z in tabelle.rows)))
@@ -175,7 +175,10 @@ def lauf(aufgabe, work, args, base_env):
     ctx = Ctx(repo, "master", json.loads((work / "state.json").read_text(encoding="utf-8")),
               [json.loads(z) for z in protokoll.read_text(encoding="utf-8").splitlines()] if protokoll.exists() else [],
               agent.get("tool_calls") or [], agent)
-    return (modul.check(ctx), kosten, dauer)
+    fehler = modul.check(ctx)
+    if agent.get("error"):
+        fehler = [f"Adapter-Fehler: {agent['error']}", *fehler]
+    return (fehler, kosten, dauer)
 
 
 def commit_angabe(repo):
