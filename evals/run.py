@@ -134,7 +134,8 @@ def baue_lauf(aufgabe, work, base_env):
 def sandbox_befehl(work, home=None):
     """bwrap-Aufruf (Liste, Programm zuerst) vor dem Adapter: alles schreibgeschützt, beschreibbar nur `work` und die Claude-Konfiguration (nur vorhandene Pfade)."""
     home = Path(home) if home else Path.home()
-    cmd = ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--bind", str(work), str(work)]
+    # /tmp ist ein privates tmpfs: das Bash-Tool von claude braucht dort ein Arbeitsverzeichnis (im Probelauf gemessen: ohne lief Bash nicht)
+    cmd = ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--bind", str(work), str(work)]
     for p in (home / ".claude", home / ".claude.json"):
         if p.exists():
             cmd += ["--bind", str(p), str(p)]
@@ -160,7 +161,11 @@ def starte_agent(adapter, prompt, cwd, env, model=None, budget=1.0, tools=(), sa
         pfad = str(Path(pfad).resolve())
     exe, args = (sys.executable, [pfad]) if pfad.lower().endswith(".py") else (pfad, [])
     if sandbox:  # Sandbox-Befehl davor; der Adapter bleibt unverändert und läuft weiter über proc.run
-        exe, args = sandbox[0], [*sandbox[1:], exe, *args]
+        sichtbar = []  # /tmp ist in der Sandbox ein leeres tmpfs: ein Adapter dort bliebe unsichtbar, also schreibgeschützt einbinden
+        if Path(pfad).is_absolute() and Path(pfad).exists() and Path(pfad).resolve().is_relative_to("/tmp"):
+            sichtbar = ["--ro-bind", pfad, pfad]
+        i = sandbox.index("--unshare-pid") if "--unshare-pid" in sandbox else len(sandbox) - 1
+        exe, args = sandbox[0], [*sandbox[1:i], *sichtbar, *sandbox[i:], exe, *args]
     r = proc.run(exe, args, cwd=cwd, env=env, timeout=AGENT_TIMEOUT + 30, input=json.dumps(anfrage, ensure_ascii=False))
     name = Path(pfad).name
     if r.returncode != 0:
