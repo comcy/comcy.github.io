@@ -35,7 +35,7 @@ Quelle: https://claude.com/blog/the-ai-native-sdlc-playbook (gelesen 2026-10-07)
 | --- | --- | --- |
 | Hooks als Gates (Secret-Scan, Commit-Lint, Freigabe) | Deploy | #11 |
 | Evals: Runner und sieben Aufgaben gebaut (`evals/`, #86), echter Lauf offen; später 20–50 Aufgaben, Gate bei Änderung an Skills/Hooks/AGENTS.md, Incident → Eval | Test | #86, Folge: Gate und Ausbau |
-| Metriken (Durchlaufzeit, Nacharbeit, Fehlerquote) | Metriken je Play | #28, Daten aus Label-Zeitstempeln |
+| Metriken: fünf Kennzahlen als Daten (`workflow/metrics.tsv`), `kvasir metrics` für GitHub und Azure DevOps, erster Bericht unter `docs/metriken/` | Metriken je Play | gebaut (#132); offen: Ziele (`target`) festlegen, Warnungen |
 | Maintain als generische Phase (Monitoring, wiederkehrende Scans, Incident → Ticket/Eval) | Maintain | neue Phase in `phases.tsv` (optional, `enabled` je Projekt), Skill/Ablauf dazu; Ticket anlegen. Hier standardmäßig aus (statische Seite), der Mechanismus muss trotzdem existieren |
 | `REVIEW.md` | Deploy | prüfen: reicht `/code-review` mit Verweis auf AGENTS.md/Teststrategie? |
 

@@ -36,7 +36,7 @@ Lesehilfe:
 | Evals: Prozess-Treue des Agenten (Runner `evals/run.py`, sieben Aufgaben, Bericht mit Diagramm) | **gebaut, erster echter Lauf 2026-10-08** | 6 von 7 bestanden, eine Lücke in `AGENTS.md` gefunden und geschlossen; kein CI-Gate (manueller Start), mehr Läufe und Aufgaben später |
 | Evals mit anderem Agenten (Adapter, abgeleitete Aufgaben) | **gebaut, Trockenlauf mit Fake-Adapter (sh) belegt** | echter Lauf mit `--runs 3` nur nach Freigabe; Anleitung in Kapitel 4 |
 | Maintain-Phase (Monitoring, wiederkehrende Scans) | **fehlt** | Ticket #60, als optionale generische Phase geplant |
-| Metriken (Durchlaufzeit, Nacharbeit, rote CI vor Merge) | **fehlt** | Daten vorhanden (Label-Zeitstempel, PRs), keine Auswertung |
+| Metriken (Durchlaufzeit, PR-Dauer, rote CI, Nacharbeit, Eval-Quote) | **gebaut** | `kvasir metrics` (GitHub und Azure DevOps), Definition in `workflow/metrics.tsv`; erster Bericht unter `docs/metriken/`; Azure noch nicht gegen eine echte Organisation geprüft |
 | Protokoll der Skill-Aufrufe und `gh`-Schreibzugriffe | **fehlt** | Teil von Ticket #11 (Nachvollziehbarkeit) |
 | Orchestrierung (LangGraph, Agent SDK) | bewusst vertagt | erst bei unbeaufsichtigtem Betrieb sinnvoll |
 
