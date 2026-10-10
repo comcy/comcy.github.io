@@ -1,5 +1,5 @@
 ## 1. Daten und Prüfung (Workflow-Repo, Tracer)
-- [ ] 1.1 `workflow/metrics.tsv` und `metric-sources.tsv` mit den fünf Metriken, `flow validate` prüft (Ids, `art`, `target`, Quellen), Tests, Doku
+- [x] 1.1 `workflow/metrics.tsv` und `metric-sources.tsv` mit den fünf Metriken, `flow validate` prüft (Ids, `art`, `target`, Quellen), Tests, Doku
 
 ## 2. kvasir: Ereignismodell und erste Metrik (kvasir-Repo)
 - [ ] 2.1 Ereignismodell, GitHub-Übersetzung der Ticket-Ereignisse, `ticket_cycle_time`, `kvasir metrics` (text), liest `metrics.tsv`

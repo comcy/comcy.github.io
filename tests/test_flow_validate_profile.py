@@ -21,6 +21,8 @@ FILES = {
                   "triage\t0\trequired\tplugin x\tinstall x\tno\n"
                   "to-tickets\t3\t\tplugin x\tinstall x\tno\n"
                   "-\t6\t\t\t\tyes\n",
+    "metrics.tsv": "id\tart\tname\tunit\tsource\ttarget\tenabled\n",
+    "metric-sources.tsv": "name\targ\tdescription\n",
     "roles.tsv": "role\tphases\tallowed_tools\thuman_gate\tdescription\n"
                  "planner\t0,3\tRead Glob\tno\tPlant\n"
                  "human\t6\t-\tyes\tGibt frei\n",

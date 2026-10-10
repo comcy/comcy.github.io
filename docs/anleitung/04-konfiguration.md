@@ -57,6 +57,8 @@ flowchart LR
 | `workflow/detectors.tsv` | `flow validate`, `flow`, kvasir | das feste Vokabular der Bedingungen |
 | `workflow/skills.tsv` | `flow validate`, `setup --check` | welcher Skill welche Phase trägt, Installationshinweis |
 | `workflow/roles.tsv` | `flow validate`, `evals/run.py` | Rollen, ihre Phasen und `allowed_tools` |
+| `workflow/metrics.tsv` | `flow validate`, kvasir | Metriken (`leading`/`lagging`, Einheit, Quelle, optionales Ziel) |
+| `workflow/metric-sources.tsv` | `flow validate`, kvasir | die auswertbaren Quellen der Metriken |
 | `scripts/setup.d/tools.tsv` | `setup.py` | benötigte Programme und Mindestversionen |
 | `scripts/setup.d/agents.tsv` | `setup.py` | Agenten mit lokalem Adapter und Orten ihrer Skills (`skill_paths`) |
 | `evals/adapters/*` | `evals/run.py` (`--adapter`) | startet den Agenten für die Evals (JSON-Vertrag) |
@@ -156,6 +158,17 @@ human	S,4b,6	-	yes	Richtet ein, nimmt ab, mergt und sichert Wissen
 ```
 
 `flow validate`: Fehler, wenn eine aktive `required`-Phase keiner Rolle gehört; Warnung (mit `--strict` Fehler) bei einer Rolle ohne Phase.
+
+### `metrics.tsv` und `metric-sources.tsv`: Metriken
+
+`metrics.tsv`: `id`, `art` (`leading|lagging`), `name`, `unit` (`h|d|%|n`), `source`, `target` (leer oder Zahl), `enabled`. `metric-sources.tsv`: `name`, `arg`, `description`; die Quellen rechnet kvasir, die Datei enthält nie Code.
+
+```
+id	art	name	unit	source	target	enabled
+cycle_time	lagging	Durchlaufzeit je Ticket	h	ticket_cycle_time		yes
+```
+
+`flow validate`: Fehler bei doppelter `id`, ungültiger `art`/`unit`, `target` keine Zahl, unbekannter `source`; Warnung (mit `--strict` Fehler), wenn die Quelle abgeschaltet ist.
 
 ### Rezepte: Skills, Rollen, Agenten
 
