@@ -158,6 +158,24 @@ Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Date
 
 **Isolation:** Ohne Maßnahmen liefen im ersten Probelauf Hooks, Plugins, MCP-Server und Auto-Memory aus dem echten HOME mit. Der Runner startet `claude` deshalb mit `--setting-sources project,local --strict-mcp-config` und `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` (im echten Lauf geprüft: keine Hooks, kein MCP, kein Memory-Pfad). Regeln, die der Agent kennen muss (Autor, TDD), stehen deshalb in `AGENTS.md`, nicht in der globalen `CLAUDE.md`. `Bash` ist erlaubt; Schreibzugriffe außerhalb des Arbeitsverzeichnisses verhindert die Sandbox (`--sandbox`, siehe oben), mit `--sandbox none` nicht. Ein einzelner Lauf je Aufgabe sagt wenig: für belastbare Aussagen `--runs 3`.
 
+### Metriken (`workflow/metrics.tsv`, `kvasir metrics`)
+
+Ob der Prozess etwas bringt, zeigen fünf Kennzahlen aus Fakten (Label-Ereignisse, PRs, CI-Läufe, Eval-Berichte). Die **Definition** steht als Daten im Repo: `workflow/metrics.tsv` (`id`, `art` leading|lagging, `name`, `unit` h|d|%|n, `source`, optional `target`, `enabled`) und das feste Vokabular `workflow/metric-sources.tsv`; `flow validate` prüft beide. Die **Berechnung** liegt in kvasir (rein lesend, GitHub und Azure DevOps über dasselbe neutrale Ereignismodell):
+
+```sh
+kvasir metrics [--since 30d] [--repo owner/repo] [--format text|json|markdown] [--evals evals/reports]
+```
+
+| Metrik | Quelle | Bedeutung |
+| --- | --- | --- |
+| Durchlaufzeit je Ticket | `ticket_cycle_time` | erstes `status:in-progress` bis Schließen, Median |
+| Dauer bis zum Merge je PR | `pr_duration` | PR erstellt bis gemergt, Median |
+| PRs mit rotem Lauf vor dem Merge | `ci_red_before_merge` | Anteil in %, vorlaufend |
+| Nacharbeit | `rework_fixes_per_change` | Fix-PRs (`fix(...)` mit `Refs`/`Closes`) je Feature, Heuristik |
+| Bestehensquote der Evals | `eval_pass_rate` | neuester Bericht ohne "Anmerkung (nachträglich)" |
+
+Fehlende Daten erscheinen als "keine Daten", Stichproben unter drei Einträgen als "zu klein", Quellen, die kvasir nicht kennt, als "unbekannt" (`kvasir doctor` meldet sie). Ein Bericht liegt unter `docs/metriken/`. Einordnung: Bei einem Ein-Personen-Repo mit Agenten als Umsetzern sagen kurze Zeiten etwas über die Agenten, nicht über ein Team. Die Rohdaten und Grenzen (z. B. keine Paginierung über 100 Issues, Azure nur gegen Fakes getestet) stehen im README von kvasir.
+
 ## Teil B: Dieses Repo
 
 - Stack: POSIX-Shell + pandoc, kein Testframework. "Test" heißt hier: `sh build.sh` läuft sauber, erwartete Dateien in `public/` existieren, Stichproben per `grep`. Ein Check pro Logik, kein Framework (ponytail).

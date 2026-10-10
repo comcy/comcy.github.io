@@ -151,6 +151,25 @@ done_when = ["openspec_change_exists"]
 - Vorrang: **lokal** (`~/.config/kvasir/local.toml`, `repos.toml`) vor **Repo** (`kvasir.toml`) vor **Standard**.
 - Die Dateien enthalten nur Namen aus dem festen Vokabular, **nie Code**: kvasir wertet aus, die Datei beschreibt.
 
+## Metriken: läuft der Prozess gut? (optional)
+
+`kvasir metrics` rechnet fünf Kennzahlen aus Fakten (Label-Ereignisse, PRs, CI-Läufe, Eval-Berichte), auf GitHub und Azure DevOps gleich. Welche es gibt, steht als Daten in `workflow/metrics.tsv` (Kapitel 04).
+
+**echt** (`kvasir metrics --since 30d`, dieses Repo):
+
+```
+Durchlaufzeit je Ticket: 0.2 h, n=43
+Dauer bis zum Merge je PR: 0.1 h, n=76
+PRs mit rotem Lauf vor dem Merge: 6.6 %, n=76
+Nacharbeit (Fix-PRs je Feature): 0.7, n=14 (Heuristik: fix(...) + Refs/Closes)
+Bestehensquote der Evals: n=1 (zu klein)
+```
+
+- `--format markdown` erzeugt eine Tabelle für Berichte (Beispiel: `docs/metriken/2026-10-10.md`), `--format json` feste Schlüssel für Skripte.
+- **Einordnung:** Fast alle Tickets dieses Zeitraums haben Agenten gebaut, deshalb sind Zeiten und Rotanteil klein. Sie zeigen die Geschwindigkeit der Agenten, nicht die eines Teams. Aussagekräftig wird es mit mehr Tickets von Hand und mit gesetzten Zielen (`target`).
+- Unter drei Einträgen steht "zu klein", ohne Daten "keine Daten", eine Quelle, die kvasir nicht kennt, als "unbekannt" (`kvasir doctor` meldet sie).
+- Ein Aufruf über 30 Tage braucht auf diesem Repo gut 40 Sekunden, weil viele `gh`-Aufrufe nötig sind.
+
 ## Grenzen (ehrlich)
 
 - Nur lesend. Kein Label setzen, kein Branch anlegen: Das tut `flow start`/`flow review`.

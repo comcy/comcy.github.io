@@ -170,7 +170,17 @@ cycle_time	lagging	Durchlaufzeit je Ticket	h	ticket_cycle_time		yes
 
 `flow validate`: Fehler bei doppelter `id`, ungültiger `art`/`unit`, `target` keine Zahl, unbekannter `source`; Warnung (mit `--strict` Fehler), wenn die Quelle abgeschaltet ist.
 
-### Rezepte: Skills, Rollen, Agenten
+### `workflow/metrics.tsv` und `metric-sources.tsv`: Metriken
+
+```
+id	art	name	unit	source	target	enabled
+cycle_time	lagging	Durchlaufzeit je Ticket	h	ticket_cycle_time		yes
+ci_red_before_merge	leading	PRs mit rotem Lauf vor dem Merge	%	ci_red_before_merge		yes
+```
+
+`art`: `leading` (vorlaufend) oder `lagging` (nachlaufend). `unit`: `h`, `d`, `%` oder `n`. `source`: ein Name aus `metric-sources.tsv`, das feste Vokabular, das kvasir auswertet (`ticket_cycle_time`, `pr_duration`, `ci_red_before_merge`, `rework_fixes_per_change`, `eval_pass_rate`). `target` ist optional (Zahl, wird mit angezeigt, warnt noch nicht). Eine Metrik abschalten: `enabled` auf `no`. `python3 scripts/flow.py validate` prüft doppelte Ids, Werte und unbekannte Quellen, `kvasir doctor` meldet Quellen, die kvasir nicht kennt. Auswertung: `kvasir metrics` (Kapitel 03).
+
+## Rezepte: Skills, Rollen, Agenten
 
 | Ziel | Schritte |
 | --- | --- |
