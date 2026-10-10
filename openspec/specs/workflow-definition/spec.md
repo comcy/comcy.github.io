@@ -29,7 +29,7 @@ Jede Datei unter `workflow/` SHALL tabulatorgetrennt sein, Zeilen mit `#` am Anf
 - **THEN** trennt es keine Zeile, nur `\n`, `\r\n` und `\r` tun das
 
 ### Requirement: Zustände
-`workflow/states.tsv` SHALL die Zustände mit `id`, `kind` (`triage`, `status` oder `terminal`), `color` und `description` enthalten, optional `enabled` (`yes` oder `no`, Standard `yes`). Die `id` MUST in der Datei eindeutig sein und ist bei `triage` und `status` der Name des Labels. Die Farbe MUST aus sechs Hex-Zeichen bestehen, bei `terminal` darf sie `-` sein. Es MUST genau einen Zustand der Art `terminal` geben.
+`workflow/states.tsv` SHALL die Zustände mit `id`, `kind` (`triage`, `status`, `prio` oder `terminal`), `color` und `description` enthalten, optional `enabled` (`yes` oder `no`, Standard `yes`). Die `id` MUST in der Datei eindeutig sein und ist bei `triage`, `status` und `prio` der Name des Labels. Die Farbe MUST aus sechs Hex-Zeichen bestehen, bei `terminal` darf sie `-` sein. Es MUST genau einen Zustand der Art `terminal` geben.
 
 #### Scenario: Gültige Zustände
 - **WHEN** alle Zustände vollständig und eindeutig sind
@@ -51,8 +51,12 @@ Jede Datei unter `workflow/` SHALL tabulatorgetrennt sein, Zeilen mit `#` am Anf
 - **WHEN** es keinen oder mehr als einen Zustand der Art `terminal` gibt
 - **THEN** meldet `flow validate` einen Fehler
 
+#### Scenario: Prioritäten
+- **WHEN** Zustände der Art `prio` (`prio:1` bis `prio:4`) mit Farbe und Beschreibung vollständig sind
+- **THEN** meldet `flow validate` keinen Fehler und keine Warnung wegen fehlender Übergänge
+
 ### Requirement: Übergänge
-`workflow/transitions.tsv` SHALL Übergänge mit `from`, `to`, `trigger` und `guard` enthalten, optional `enabled`. `from` und `to` MUST auf Zustände aus `states.tsv` verweisen, `from` darf `-` (Start) sein. Ein Übergang bleibt innerhalb einer Dimension (gleiche `kind`), außer bei `-` als Start oder `terminal` als Ziel. `guard` ist eine mit Komma getrennte UND-Liste von Detektoren oder `-`.
+`workflow/transitions.tsv` SHALL Übergänge mit `from`, `to`, `trigger` und `guard` enthalten, optional `enabled`. `from` und `to` MUST auf Zustände aus `states.tsv` verweisen, `from` darf `-` (Start) sein. Ein Übergang bleibt innerhalb einer Dimension (gleiche `kind`), außer bei `-` als Start oder `terminal` als Ziel. Ein Zustand der Art `prio` MUST an keinem Übergang als `from` oder `to` stehen. `guard` ist eine mit Komma getrennte UND-Liste von Detektoren oder `-`.
 
 #### Scenario: Verweis auf unbekannten Zustand
 - **WHEN** `from` oder `to` eine unbekannte `id` nennt
@@ -73,6 +77,10 @@ Jede Datei unter `workflow/` SHALL tabulatorgetrennt sein, Zeilen mit `#` am Anf
 #### Scenario: Start und terminaler Zustand
 - **WHEN** ein Übergang von `-` zu einem Zustand oder von einem `status`-Zustand zu `closed` führt
 - **THEN** meldet `flow validate` keinen Fehler
+
+#### Scenario: Prio-Label im Übergang
+- **WHEN** `from` oder `to` ein Label der Art `prio` nennt
+- **THEN** meldet `flow validate` einen Fehler mit Datei und Zeile
 
 ### Requirement: Phasen
 `workflow/phases.tsv` SHALL Phasen mit `id`, `name`, `tool`, `done_when` und `level` (`required` oder `optional`) enthalten, optional `enabled`. Die `id` MUST eindeutig sein. `done_when` ist eine mit Komma getrennte UND-Liste von Detektoren oder `-`.
