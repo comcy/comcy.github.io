@@ -34,6 +34,8 @@ SUPPORT = {
     "detectors.tsv": "name\targ\tdescription\nissue_open\t-\tIssue ist offen\n",
     "phases.tsv": "id\tname\ttool\tdone_when\tlevel\n0\tEingang\t/triage\tissue_open\trequired\n",
     "skills.tsv": "skill\tphase\tlevel\tsource\thint\tmanual\ntriage\t0\trequired\t\t\tno\n",
+    "metrics.tsv": "id\tart\tname\tunit\tsource\ttarget\tenabled\n",
+    "metric-sources.tsv": "name\targ\tdescription\n",
     "roles.tsv": "role\tphases\tallowed_tools\thuman_gate\tdescription\nplanner\t0\t-\tno\tPlant\n",
     "transitions.tsv": "from\tto\ttrigger\tguard\n"
                        "-\tneeds-triage\tstart\t-\n"

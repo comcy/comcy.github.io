@@ -16,6 +16,8 @@ PHASES_FILE = "phases.tsv"
 DETECTORS_FILE = "detectors.tsv"
 SKILLS_FILE = "skills.tsv"
 ROLES_FILE = "roles.tsv"
+METRICS_FILE = "metrics.tsv"
+METRIC_SOURCES_FILE = "metric-sources.tsv"
 
 STATE_KINDS = ("triage", "status", "prio", "terminal")
 STATE_REQUIRED = ("id", "kind", "color", "description")
@@ -25,6 +27,10 @@ PHASE_LEVELS = ("required", "optional")
 SKILL_REQUIRED = ("skill", "phase", "level", "source", "hint", "manual")
 ROLE_REQUIRED = ("role", "phases", "allowed_tools", "human_gate", "description")
 DETECTOR_REQUIRED = ("name", "arg", "description")
+METRIC_REQUIRED = ("id", "art", "name", "unit", "source", "target", "enabled")
+METRIC_SOURCE_REQUIRED = ("name", "arg", "description")
+METRIC_ARTS = ("leading", "lagging")
+METRIC_UNITS = ("h", "d", "%", "n")
 
 
 @dataclass(frozen=True)
@@ -295,6 +301,48 @@ def check_profile(phases: Table, skills: Table | None, roles: Table | None, find
             findings.append(Finding(phases.file, z.line, "error", f"Phase {v['id']} ist keiner Rolle in {ROLES_FILE} zugeordnet"))
 
 
+def check_metrics(metrics: Table | None, sources: Table | None, findings: list[Finding]) -> None:
+    """metrics.tsv: eindeutige id, art, unit, target (leer oder Zahl), source aus metric-sources.tsv (abgeschaltet = Warnung)."""
+    quellen: dict[str, bool] = {}
+    if sources is not None and missing_columns(sources, METRIC_SOURCE_REQUIRED, findings):
+        for z in sources.rows:
+            name = z.values["name"]
+            if not name:
+                findings.append(Finding(sources.file, z.line, "error", "name ist leer"))
+            elif name in quellen:
+                findings.append(Finding(sources.file, z.line, "error", f"doppelte Quelle '{name}'"))
+            else:
+                quellen[name] = is_enabled(z)
+    if metrics is None or not missing_columns(metrics, METRIC_REQUIRED, findings):
+        return
+    gesehen: dict[str, int] = {}
+    for z in metrics.rows:
+        v = z.values
+        if not v["id"]:
+            findings.append(Finding(metrics.file, z.line, "error", "id ist leer"))
+        elif v["id"] in gesehen:
+            findings.append(Finding(metrics.file, z.line, "error", f"doppelte id '{v['id']}' (erste in Zeile {gesehen[v['id']]})"))
+        else:
+            gesehen[v["id"]] = z.line
+        if v["art"] not in METRIC_ARTS:
+            findings.append(Finding(metrics.file, z.line, "error", f"ungültige art '{v['art']}', erlaubt: {', '.join(METRIC_ARTS)}"))
+        if v["unit"] not in METRIC_UNITS:
+            findings.append(Finding(metrics.file, z.line, "error", f"ungültige unit '{v['unit']}', erlaubt: {', '.join(METRIC_UNITS)}"))
+        if v["target"]:
+            try:
+                float(v["target"])
+            except ValueError:
+                findings.append(Finding(metrics.file, z.line, "error", f"target muss eine Zahl sein, nicht '{v['target']}'"))
+        if v["enabled"] not in ("yes", "no", ""):
+            findings.append(Finding(metrics.file, z.line, "error", f"enabled muss yes oder no sein, nicht '{v['enabled']}'"))
+        if sources is None or not all(c in sources.header for c in METRIC_SOURCE_REQUIRED):
+            continue
+        if v["source"] not in quellen:
+            findings.append(Finding(metrics.file, z.line, "error", f"unbekannte source '{v['source']}' (nicht in {METRIC_SOURCES_FILE})"))
+        elif not quellen[v["source"]] and is_enabled(z):
+            findings.append(Finding(metrics.file, z.line, "warning", f"source '{v['source']}' ist abgeschaltet"))
+
+
 def check_graph(states_table: Table, transitions_table: Table, findings: list[Finding]) -> None:
     """Warnungen: aktivierte Zustände ohne eingehenden Übergang (unerreichbar) oder ohne ausgehenden (Sackgasse)."""
     aktiv = [r for r in transitions_table.rows if is_enabled(r)]
@@ -337,4 +385,5 @@ def validate(root: Path) -> list[Finding]:
         check_phases(phases_table, vokabular, findings)
         if all(c in phases_table.header for c in PHASE_REQUIRED):
             check_profile(phases_table, skills_table, roles_table, findings)
+    check_metrics(laden(METRICS_FILE), laden(METRIC_SOURCES_FILE), findings)
     return sorted(findings, key=lambda f: (f.file, f.line, f.level, f.message))

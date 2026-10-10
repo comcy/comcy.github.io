@@ -67,6 +67,8 @@ class Daten(unittest.TestCase):
         self.put("phases.tsv", PHASES)
         self.put("skills.tsv", SKILLS)
         self.put("roles.tsv", ROLES)
+        self.put("metrics.tsv", "id\tart\tname\tunit\tsource\ttarget\tenabled\n")
+        self.put("metric-sources.tsv", "name\targ\tdescription\n")
 
     def put(self, name, text):
         (self.root / "workflow" / name).write_bytes(text.encode("utf-8"))
