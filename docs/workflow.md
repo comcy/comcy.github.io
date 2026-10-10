@@ -109,7 +109,7 @@ Zustände, Übergänge, Phasen und das Vokabular der Bedingungen stehen als Date
 
 | Datei | Inhalt |
 | --- | --- |
-| `states.tsv` | Zustände: `id` (= Label), `kind` (`triage`, `status`, `terminal`), `color`, `description` |
+| `states.tsv` | Zustände: `id` (= Label), `kind` (`triage`, `status`, `prio`, `terminal`), `color`, `description` |
 | `transitions.tsv` | Übergänge: `from` (oder `-` für den Start), `to`, `trigger`, `guard` (Detektoren, Komma = UND) |
 | `phases.tsv` | Phasen S, 0 bis 6, 4b: `id`, `name`, `tool`, `done_when`, `level` |
 | `skills.tsv` | Skills je Phase (mehrere Zeilen je Phase möglich, eine je Skill): `skill` (`-` = keiner), `phase`, `level` (`required`, `optional`, leer = Stufe der Phase), `source`, `hint` (Installationsbefehl), `manual` (`yes` = Phase darf ohne Skill von Hand laufen) |

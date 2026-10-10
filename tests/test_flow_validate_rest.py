@@ -104,6 +104,24 @@ class Grunddaten(Daten):
                                 "phases.tsv": PHASES, "detectors.tsv": DETECTORS}[name])
 
 
+class Prio(Daten):
+    def setUp(self):
+        super().setUp()
+        self.edit("states.tsv", "closed\tterminal", "prio:1\tprio\tb60205\tPrio 1\nclosed\tterminal")
+
+    def test_art_prio_ist_gueltig_auch_ohne_uebergang_strikt(self):
+        r = run(self.root, "--strict")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("0 Fehler, 0 Warnungen", r.stdout)
+
+    def test_uebergang_mit_prio_als_quelle_oder_ziel_ist_fehler(self):
+        for zeile in ("prio:1\ta\tx\t-\n", "-\tprio:1\tx\t-\n", "a\tprio:1\tx\t-\n"):
+            with self.subTest(zeile=zeile):
+                self.edit("transitions.tsv", "-\ta\tstart\t-\n", "-\ta\tstart\t-\n" + zeile)
+                self.assert_fund(run(self.root), "transitions.tsv", "Prio-Label")
+                self.put("transitions.tsv", TRANSITIONS)
+
+
 class Uebergaenge(Daten):
     def test_unbekannter_zustand_in_from_und_to(self):
         self.edit("transitions.tsv", "a\tb\tweiter", "zz\tb\tweiter")

@@ -52,12 +52,12 @@ class MitRepo(unittest.TestCase):
         self.stubs.add("openspec", version, responses=antworten)
 
     def zustands_labels(self):
-        """(id, farbe, beschreibung) aller aktivierten Zustände der Art triage und status aus der echten states.tsv."""
+        """(id, farbe, beschreibung) aller aktivierten Zustände der Art triage, status und prio aus der echten states.tsv."""
         zeilen = [z.split("\t") for z in (self.repo / "workflow" / "states.tsv").read_text(encoding="utf-8").splitlines()
                   if z and not z.startswith("#")]
         kopf, daten = zeilen[0], zeilen[1:]
         return [(r[kopf.index("id")], r[kopf.index("color")], r[kopf.index("description")]) for r in daten
-                if r[kopf.index("kind")] in ("triage", "status")]
+                if r[kopf.index("kind")] in ("triage", "status", "prio")]
 
     def gh(self, vorhanden=None, angemeldet=True, liste_stdout=None):
         """Stub für gh: Version, Anmeldung und `label list` (Standard: alle Labels aus states.tsv sind vorhanden)."""

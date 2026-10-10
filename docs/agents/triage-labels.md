@@ -14,4 +14,4 @@ When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the 
 
 Edit the right-hand column to match whatever vocabulary you actually use.
 
-**Quelle der Label-Namen, Farben und Beschreibungen** ist `workflow/states.tsv`; `python3 scripts/setup.py --labels` legt fehlende Labels an. Weitere Zustände (Fluss) stehen in `docs/agents/flow-labels.md`.
+**Quelle der Label-Namen, Farben und Beschreibungen** ist `workflow/states.tsv`; `python3 scripts/setup.py --labels` legt fehlende Labels an. Weitere Zustände (Fluss) und die Prioritäten `prio:1` bis `prio:4` stehen in `docs/agents/flow-labels.md`.

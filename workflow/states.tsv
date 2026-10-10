@@ -1,5 +1,6 @@
-# Zustände des Prozesses. id = Name des Labels (bei triage und status), kind = Dimension.
-# kind: triage (Rolle laut /triage), status (Fluss laut docs/agents/flow-labels.md), terminal (kein Label).
+# Zustände des Prozesses. id = Name des Labels (bei triage, status und prio), kind = Dimension.
+# kind: triage (Rolle laut /triage), status (Fluss laut docs/agents/flow-labels.md), prio (Priorität, höchstens eines je Issue,
+# kein Zustand: nimmt an keinem Übergang teil), terminal (kein Label).
 # enabled (optional): no schaltet einen Zustand ab, ohne ihn zu löschen.
 id	kind	color	description
 needs-triage	triage	fbca04	Maintainer needs to evaluate
@@ -11,4 +12,8 @@ status:ready-for-refinement	status	c5def5	Flow: triaged, needs refinement
 status:in-refinement	status	8fb5e8	Flow: grilling and change proposal in progress
 status:in-progress	status	fef2c0	Flow: branch and PR open
 status:in-review	status	f9d0c4	Flow: PR ready, review running
+prio:1	prio	b60205	Priority: most urgent
+prio:2	prio	d93f0b	Priority: high
+prio:3	prio	fbca04	Priority: normal
+prio:4	prio	0075ca	Priority: low
 closed	terminal	-	Issue closed (no label)
