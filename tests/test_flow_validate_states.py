@@ -70,7 +70,7 @@ class RealData(unittest.TestCase):
     def test_echte_zustaende_enthalten_alle_labels(self):
         ids = [line.split("\t")[0] for line in (REPO / "workflow" / "states.tsv").read_text(encoding="utf-8").splitlines()
                if line and not line.startswith("#")][1:]
-        for erwartet in ["needs-triage", "needs-info", "ready-for-agent", "ready-for-human", "wontfix",
+        for erwartet in ["prio:1", "prio:2", "prio:3", "prio:4", "needs-triage", "needs-info", "ready-for-agent", "ready-for-human", "wontfix",
                          "status:ready-for-refinement", "status:in-refinement", "status:in-progress",
                          "status:in-review", "closed"]:
             self.assertIn(erwartet, ids)

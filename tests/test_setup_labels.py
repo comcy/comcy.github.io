@@ -27,6 +27,14 @@ class LabelsAnlegen(MitRepo):
             self.assertEqual(args[args.index("--color") + 1], farben[name][0])
             self.assertEqual(args[args.index("--description") + 1], farben[name][1])
 
+    def test_prio_labels_werden_angelegt(self):
+        self.gh(vorhanden=[])
+        r = self.run_setup("--labels")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        namen = [a[2] for a in self.create_aufrufe()]
+        for n in ("prio:1", "prio:2", "prio:3", "prio:4"):
+            self.assertIn(n, namen)
+
     def test_alle_vorhanden_nichts_wird_angelegt(self):
         r = self.run_setup("--labels")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)

@@ -84,7 +84,7 @@ status:in-progress	status	fef2c0	Flow: branch and PR open
 closed	terminal	-	Issue closed (no label)
 ```
 
-`kind`: `triage` (Rolle laut `/triage`), `status` (Fluss), `terminal` (kein Label; genau ein Zustand). `id` ist bei triage und status der **Labelname**. `python3 scripts/setup.py --labels` legt fehlende Labels an, vorhandene bleiben unberührt.
+`kind`: `triage` (Rolle laut `/triage`), `status` (Fluss), `prio` (Priorität `prio:1` bis `prio:4`, höchstens eines je Issue; kein Zustand, in `transitions.tsv` als `from` oder `to` ein Fehler), `terminal` (kein Label; genau ein Zustand). `id` ist bei triage, status und prio der **Labelname**. `python3 scripts/setup.py --labels` legt fehlende Labels an, vorhandene bleiben unberührt.
 
 ### `transitions.tsv`: Übergänge
 

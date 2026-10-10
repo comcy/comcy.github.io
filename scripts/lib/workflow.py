@@ -17,7 +17,7 @@ DETECTORS_FILE = "detectors.tsv"
 SKILLS_FILE = "skills.tsv"
 ROLES_FILE = "roles.tsv"
 
-STATE_KINDS = ("triage", "status", "terminal")
+STATE_KINDS = ("triage", "status", "prio", "terminal")
 STATE_REQUIRED = ("id", "kind", "color", "description")
 TRANSITION_REQUIRED = ("from", "to", "trigger", "guard")
 PHASE_REQUIRED = ("id", "name", "tool", "done_when", "level")
@@ -188,6 +188,10 @@ def check_transitions(table: Table, states: dict[str, tuple[str, bool]], vokabul
         if nach not in states:
             findings.append(Finding(table.file, zeile.line, "error",
                                     "Ziel darf nicht '-' sein" if nach == "-" else f"unbekannter Zustand '{nach}' in to"))
+        for zustand in (von, nach):
+            if states.get(zustand, ("",))[0] == "prio":
+                findings.append(Finding(table.file, zeile.line, "error",
+                                        f"Prio-Label '{zustand}' ist kein Zustand und darf an keinem Übergang teilnehmen"))
         if von in states and nach in states:
             kind_von, kind_nach = states[von][0], states[nach][0]
             if kind_von == "terminal":
@@ -298,7 +302,7 @@ def check_graph(states_table: Table, transitions_table: Table, findings: list[Fi
     ausgang = {r.values["from"] for r in aktiv}
     for zeile in states_table.rows:
         v = zeile.values
-        if not is_enabled(zeile):
+        if not is_enabled(zeile) or v["kind"] == "prio":  # Prio-Labels nehmen an keinem Übergang teil
             continue
         if v["id"] not in eingang:
             findings.append(Finding(states_table.file, zeile.line, "warning", f"kein eingehender Übergang für '{v['id']}'"))

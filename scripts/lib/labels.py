@@ -18,12 +18,12 @@ class Label:
 
 
 def wanted_labels(root: Path) -> list[Label]:
-    """Aktivierte Zustände der Art triage und status in der Reihenfolge der Datei (terminale haben kein Label)."""
+    """Aktivierte Zustände der Art triage, status und prio in der Reihenfolge der Datei (terminale haben kein Label)."""
     table = read_table(root / WORKFLOW_DIR / STATES_FILE, f"{WORKFLOW_DIR}/{STATES_FILE}", [])
     if table is None or not all(c in table.header for c in ("id", "kind", "color", "description")):
         return []
     return [Label(z.values["id"], z.values["color"], z.values["description"]) for z in table.rows
-            if z.values["kind"] in ("triage", "status") and is_enabled(z)]
+            if z.values["kind"] in ("triage", "status", "prio") and is_enabled(z)]
 
 
 def gh(root: Path, *args: str):
