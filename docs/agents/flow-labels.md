@@ -12,10 +12,14 @@ Genau ein `status:`-Label je Issue. Beim Wechsel das alte entfernen (`gh issue e
 | `status:in-progress` | Branch und PR offen | 4 |
 | `status:in-review` | PR bereit, Review läuft | 4 |
 
-Abschluss: Issue schließen (`/openspec-archive-change` abgeschlossen), kein Label.
+Abschluss: Issue schließen (`/openspec-archive-change` abgeschlossen), kein Label. Beim Schließen entfernt `.github/workflows/close-labels.yml` alle `status:*`-Labels selbst (Triage-Labels bleiben).
 
 Ebenen: Refinement-Status am Feature-Issue, Bau-Status an den Sub-Issues (Tickets). Branch-Name: `feature/<issue-id>-<slug>`.
 
 Anweisung an Agenten: Wechselt die Arbeit in eine neue Phase, setze das passende `status:`-Label und sage es im Ergebnis. Entfernt der Agent kein altes Label, ist das ein Fehler, den der Mensch korrigiert.
 
+Priorität: dritte Art `prio` in `workflow/states.tsv` (`prio:1` am dringendsten bis `prio:4`). Höchstens ein `prio:`-Label je Issue (zwei sind ein Fehler des Menschen, beim Setzen das alte entfernen). Kein Zustand: kein Übergang in `workflow/transitions.tsv` nennt sie, `flow validate` meldet das als Fehler.
+
 Azure DevOps o. ä.: gleiche Namen als Tags verwenden.
+
+**Quelle der Label-Namen, Farben und Beschreibungen** ist `workflow/states.tsv`; `python3 scripts/setup.py --labels` legt fehlende Labels an. Übergänge und Bedingungen stehen in `workflow/transitions.tsv`.

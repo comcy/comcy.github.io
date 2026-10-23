@@ -1,0 +1,10 @@
+{
+  "issues": {
+    "5": {
+      "title": "Beispiel-Ticket mit offenem Blocker",
+      "state": "OPEN",
+      "labels": ["enhancement", "ready-for-agent"],
+      "blocked_by": [{"state": "open"}]
+    }
+  }
+}

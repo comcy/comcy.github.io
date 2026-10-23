@@ -55,14 +55,6 @@ Entscheidung: OpenSpec hält fest, *was* gelten soll, GitHub-Issues, `tdd` und `
 
 Gedanke für den Post: Ein agiler Prozess hängt nicht am Werkzeug. Zustände (`ready-for-refinement`, `in-refinement`, `in-progress`, `in-review`) lassen sich als Labels (GitHub) oder Tags (Azure DevOps) abbilden, ein Board kommt erst dazu, wenn mehrere Personen mitarbeiten. Ein Feature-Issue kann Sub-Issues haben, an denen verschiedene Personen arbeiten (`/to-tickets` nutzt native Sub-Issue- und Blocking-Beziehungen). Zwei Ebenen: Refinement-Zustände am Feature, Bau-Zustände an den Tickets. Zu klären: Wie viel davon tragen die Skills selbst, wie viel steht nur als Anweisung in der Doku?
 
-## Prozess statt Skills, und wie verlässlich ist er?
-
-Beobachtung: Der Ablauf steht in Prosa (`AGENTS.md`, `workflow.md`, Skill-Texte). Ein Agent folgt ihm wahrscheinlich, aber nicht garantiert. Wichtiger als "die Skills benutzt zu haben" ist der Prozess: Jede Phase bekommt Eingang, Ergebnis, Prüfpunkt und Zustandswechsel, das Werkzeug dahinter ist austauschbar.
-
-Leiter von weich nach hart: Prosa, Skill, Skill-Konfiguration, Skript, Hook, CI mit Branch-Schutz. Das Modell urteilt, Skripte und CI erzwingen Übergänge. Nachvollziehbar wird es über Label-Zeitstempel, Session-Links in Commits, protokollierende Hooks und einen Testlauf an einer Beispielaufgabe. Details in `docs/workflow.md`, Abschnitt "Später: Verlässlichkeit und Nachvollziehbarkeit". Noch nicht umgesetzt.
-
-Reihenfolge, die ich verfolge: erst agentenunabhängige Mittel (Git-Hooks, CI, Branch-Schutz), dann ein Skript für Zustandswechsel, dann Phasen als Daten, zuletzt Orchestrierung. Agenten-Hooks sind an den Agenten gebunden, harte Regeln gehören deshalb in Git-Hooks und CI. LangGraph (Ablauf als Graph, Modell nur im Knoten) wäre die härteste Stufe, lohnt aber erst bei unbeaufsichtigtem Betrieb. Leichter davor: GitHub Actions auf Label-Ereignissen.
-
 ## Erster Change: timeline-startseite
 
 - Vorher: Feature-Issue (#13, `status:in-refinement`) und Branch `feature/13-timeline-startseite` von `master`.
@@ -71,7 +63,28 @@ Reihenfolge, die ich verfolge: erst agentenunabhängige Mittel (Git-Hooks, CI, B
 - `/to-tickets` ließ sich von Hand nach `SKILL.md` ausführen: Die Tasks (nach Schichten geordnet) wurden zu 5 vertikalen Scheiben umgeschnitten, ich habe sie vorgestellt, du hast sie bestätigt, erst dann habe ich veröffentlicht. Ergebnis: 5 Sub-Issues von #13 (#16 bis #20) mit `ready-for-agent` und nativen `blocked_by`-Beziehungen (Sub-Issue- und Dependency-API von GitHub per `gh api`, funktionierte beim ersten Versuch bis auf eine verlorene Beziehung, die ich nachträglich setzen musste: dort lohnt später eine Prüfung im Skript).
 - Beobachtung: `tasks.md` aus OpenSpec ist nach Schichten geordnet (Daten, Ausgabe, Layout), `/to-tickets` verlangt vertikale Scheiben. Beides zusammen braucht eine Übersetzung, die Tasks sind Eingabe, nicht Ergebnis. Eventuell die Task-Regel in `openspec/config.yaml` anpassen ("vertikale Scheiben statt Schichten").
 
-## Noch zu dokumentieren
+## Ergebnis: der erste Change ist durch
 
-- Erster Change von der Idee bis zum Archive.
-- Was hat gut funktioniert, was war Overhead?
+`timeline-startseite` ist umgesetzt und archiviert: eine Timeline auf der Startseite mit Beiträgen, Seiten und manuellen Bookmarks, aufklappbar, mit Nachladen beim Scrollen und einer vollständigen Seite `/timeline/`.
+
+Zahlen: 8 Tickets (Sub-Issues eines Feature-Issues), 9 Pull Requests inklusive CI, 48 Shell-Tests über den Build und 47 Browser-Prüfungen (Kontrast in acht Farbvarianten, Tastatur, 375 px, Nachladen), zwei Specs mit 13 Requirements, die beim Archivieren in `openspec/specs/` gelandet sind.
+
+Was der Prozess gefunden hat:
+- **Code-Review über drei Tickets:** zwei echte Fehler gegen die Spec (leere Spalte ohne Einträge, Ende gleich Start), die TDD und Screenshots nicht gezeigt hatten.
+- **Abnahme-Skript:** der Link-Kontrast lag in drei hellen Farbvarianten unter 4,5:1 (nord hell 3,31:1). Das Problem trifft alle Links der Seite, nicht nur die Timeline.
+- **Branch-Schutz:** Ein PR wurde gemergt, bevor die CI lief. Seitdem verlangt der Branch-Schutz den Check `test`.
+- **`tasks.md` nach Schichten:** `/to-tickets` verlangt vertikale Scheiben. Die Task-Regel verlangt jetzt Scheiben, ob das reicht, zeigt der nächste Change.
+- **Specs nachgezogen:** Beim Archivieren mussten die Specs an den gebauten Stand angepasst werden (Gleichstand beim Sortieren, Ende gleich Start, Lesbarkeit). Specs, die vor dem Bauen entstehen, sind eine Annahme, keine Wahrheit.
+
+## Der zweite Change: ein Werkzeug, das sich selbst einrichtet
+
+Nach der Timeline kam ein Werkzeug für den Prozess selbst: Zustände, Übergänge und Phasen als Daten (`workflow/*.tsv`), ein Befehl, der sie prüft (`flow validate`), und ein Setup, das nach dem Klonen Voraussetzungen prüft, die Adapter für den eigenen Agenten einrichtet und Labels anlegt (`setup.py`). Es läuft unter Linux, macOS und Windows (Python, nur Standardbibliothek), und das ist in der CI auf allen drei Systemen belegt.
+
+Das Besondere: Ich habe die sechs Tickets einmal komplett selbstständig umsetzen lassen. Pro Ticket erst die Tests (von außen, mit Stub-Programmen für `gh` und `openspec`), dann der Code, dann ein Pull Request, CI auf drei Systemen und Merge bei Grün. Erst am Ende habe ich das Ergebnis angesehen. Was dabei auffiel:
+- Die Teststellen von außen tragen: Ein Stub-Programm schrieb in einem frühen Lauf ins echte Repo, weil es im Arbeitsordner des Tests lief. Daraus wurden zwei Schutzmaßnahmen (Arbeitsordner immer das Repo, Stubs schreiben nur im Testordner).
+- Ein manueller Probelauf mit den echten Programmen in einem Wegwerf-Klon fand etwas, das die Stubs nicht zeigen konnten: `gh label list` scheitert in einem Klon ohne GitHub-Remote.
+- Das Review vor dem Archivieren fand nach 89 grünen Tests noch sechs echte Fehler.
+
+## Weiter
+
+Wie der Prozess erzwungen und geprüft wird (Gates, `kvasir`, Evals, Skills und Rollen als Konfiguration), steht im zweiten Teil: *Den Prozess erzwingen und prüfen*.

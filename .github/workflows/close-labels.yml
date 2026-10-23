@@ -1,0 +1,24 @@
+name: Status-Labels beim Schließen entfernen
+
+# Beim Schließen eines Issues (Merge mit "Closes #N", von Hand, per gh) bleibt kein status:*-Label stehen.
+# Triage-Labels bleiben. Siehe docs/agents/flow-labels.md.
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  issues: write
+
+jobs:
+  close-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: status:*-Labels entfernen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          LABELS: ${{ join(github.event.issue.labels.*.name, '\n') }}
+        run: |
+          printf '%b\n' "$LABELS" | grep '^status:' | while read -r l; do
+            gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --remove-label "$l"
+          done || true

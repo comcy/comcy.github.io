@@ -15,3 +15,11 @@ Second label dimension (`status:*`) for the agile flow, not handled by the skill
 ### Domain docs
 
 Single-context. See `docs/agents/domain.md`.
+
+## Commits
+
+Conventional Commits (`type(scope): Betreff`, erzwungen durch Hook `commit-msg` und CI-Job `gates`). Autor der Commits: `christian.silfang@gmail.com` (`git -c user.email=… commit` oder `git config user.email`). Vor dem Commit prüft der Hook `pre-commit` auf Secrets; ein Treffer wird behoben, nicht umgangen. Details: `docs/workflow.md`.
+
+## Bauen
+
+Fehlerbehebung und neue Funktion mit **rotem Test zuerst** (Skill `tdd`, Teil von `/implement`): erst ein Test, der den Fehler zeigt, dann die Änderung, dann alles grün. Der Test liegt an der äußeren Naht (Aufruf des Programms), nicht an inneren Funktionen. Kein `git stash`, solange mehrere Worktrees parallel genutzt werden.

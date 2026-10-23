@@ -1,0 +1,7 @@
+# Auswertbare Quellen der Metriken (Namen, die kvasir kennt; die Datei enthält nie Code). enabled (optional): no schaltet eine Quelle ab.
+name	arg	description
+ticket_cycle_time	-	Zeit vom ersten Ereignis in_arbeit bis geschlossen (Median, Anzahl)
+pr_duration	-	Zeit von pr_erstellt bis pr_gemergt (Median)
+ci_red_before_merge	-	Anteil der PRs mit mindestens einem roten Lauf vor dem Merge
+rework_fixes_per_change	-	Fix-PRs fix(...) mit Bezug auf dasselbe Feature-Issue je Feature (Mittel)
+eval_pass_rate	-	Bestehensquote der letzten Eval-Berichte (--evals, Standard evals/reports/)

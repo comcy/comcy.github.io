@@ -10,7 +10,9 @@ OUT=public
 BASE=$(printf '%s' "$SITE_URL" | sed 's|^[a-z]*://[^/]*||')
 YEAR=$(date +%Y)
 # Prüfsumme von CSS und JS als Cache-Buster, damit Browser nach Änderungen sofort die neuen Dateien laden
-ASSET_V=$(cat static/style.css static/site.js | cksum | cut -d' ' -f1)
+ASSET_V=$(cat static/style.css static/site.js static/timeline.js | cksum | cut -d' ' -f1)
+TL_MAX=8  # Einträge der Timeline auf der Startseite; mehr führen zum Link "Alles ansehen" (README und tests/timeline-check.sh nennen den Wert)
+TL_CHUNK=10  # Einträge je nachladbarem Fragment unter /timeline/chunk-N.html
 US=$(printf '\037')  # Feldtrenner im Index (kein Whitespace, damit leere Felder erhalten bleiben)
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -40,10 +42,29 @@ check_date() {
     { echo "Ungültiges Datum '$1' in $2" >&2; exit 1; }
 }
 
-# Timeline-Eintrag für einen Post (liest Felder aus $date $slug $title)
+# Normalisiert ein gültiges Datum auf JJJJ-MM-TT, ein fehlender Monat oder Tag zählt als der erste: norm_date <datum>
+norm_date() {
+  case ${#1} in 4) printf '%s-01-01' "$1" ;; 7) printf '%s-01' "$1" ;; *) printf '%s' "$1" ;; esac
+}
+
+# Feld <n> der Metadaten in $meta (tabgetrennt). cut statt read, weil read leere Felder bei Whitespace-IFS verschluckt: meta_field <n>
+meta_field() { printf '%s' "$meta" | cut -f"$1"; }
+
+# Timeline-Eintrag (liest Felder aus $kind $slug $date $end $title $desc): Beitrag mit Link, Bookmark ohne Seite
 timeline_item() {
-  printf '<li class="tl-item"><time datetime="%s">%s</time> <a href="%s/blog/%s/">%s</a></li>\n' \
-    "$date" "$date" "$BASE" "$slug" "$(xml_escape "$title")"
+  case $kind in
+    post|page)
+      [ "$kind" = post ] && href="$BASE/blog/$slug/" || href="$BASE/$slug/"
+      printf '<li class="tl-item"><time datetime="%s">%s</time> <a href="%s">%s</a></li>\n' \
+        "$date" "$date" "$href" "$(xml_escape "$title")" ;;
+    *) range=
+       if [ -n "$end" ]; then
+         [ "$end" = now ] && endtxt=laufend || endtxt=$end
+         range=$(printf '<p class="tl-range">%s – %s</p>' "$date" "$endtxt")
+       fi
+       printf '<li class="tl-item" data-kind="bookmark"><details><summary><time datetime="%s">%s</time> %s</summary><p>%s</p>%s</details></li>\n' \
+         "$date" "$date" "$(xml_escape "$title")" "$(xml_escape "$desc")" "$range" ;;
+  esac
 }
 
 # Listeneintrag für einen Post (liest Felder aus $date $slug $title $desc)
@@ -60,20 +81,48 @@ for f in posts/*.md; do
   slug=$(basename "$f" .md)
   slug=${slug#[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-}
   meta=$(pandoc "$f" --to plain --wrap=none --template templates/meta.txt)
-  check_date "$(printf '%s' "$meta" | cut -f1)" "$f"
-  draft=$(printf '%s' "$meta" | cut -f3)
+  check_date "$(meta_field 1)" "$f"
+  draft=$(meta_field 3)
   if [ "$draft" = draft ] && [ "${DRAFTS:-0}" != 1 ]; then
     echo "Entwurf übersprungen: $f"
     continue
   fi
   printf '%s\t%s\n' "$slug" "$meta" |
     awk -F'\t' -v OFS="$US" '{print $2, $1, $3, $5, $6}' >> "$TMP/index"
-  render "$f" "$OUT/blog/$slug/index.html" -M post=true -M pagetitle="$(printf '%s' "$meta" | cut -f2)"
+  render "$f" "$OUT/blog/$slug/index.html" -M post=true -M pagetitle="$(meta_field 2)"
   # Bilder und andere Dateien neben dem Post: posts/<dateiname>/ wird mitkopiert
   [ -d "${f%.md}" ] && cp -R "${f%.md}/." "$OUT/blog/$slug/"
   echo "Post: $slug"
 done
 LC_ALL=C sort -r "$TMP/index" > "$TMP/sorted"
+
+# --- Timeline-Index: Beiträge, Seiten und Bookmarks (key, art, slug, datum, ende, titel, beschreibung); der Schlüssel ist das normalisierte Datum, bei Gleichstand entscheiden Art und Slug ----------
+: > "$TMP/tl"
+while IFS=$US read -r date slug title tags desc; do
+  printf '%s\037post\037%s\037%s\037\037%s\037%s\n' "$(norm_date "$date")" "$slug" "$date" "$title" "$desc" >> "$TMP/tl"
+done < "$TMP/sorted"
+# Seiten mit date: (außer Startseite und Galerie) und Bookmarks aus timeline/; Entwürfe wie im Blog
+for f in pages/*.md timeline/*.md; do
+  [ -e "$f" ] || continue
+  slug=$(basename "$f" .md); kind=bookmark
+  case $f in pages/*) kind=page; case $slug in index|gallery) continue ;; esac ;; esac
+  meta=$(pandoc "$f" --to plain --wrap=none --template templates/timeline-meta.txt)
+  date=$(meta_field 1); end=$(meta_field 2); title=$(meta_field 3); desc=$(meta_field 4)
+  [ "$kind" = page ] && [ -z "$date" ] && continue
+  [ "$(meta_field 5)" = draft ] && [ "${DRAFTS:-0}" != 1 ] && continue
+  check_date "$date" "$f"
+  [ -n "$title" ] || { echo "Titel fehlt in $f" >&2; exit 1; }
+  if [ -n "$end" ] && [ "$end" != now ]; then
+    check_date "$end" "$f"
+    # normalisiert verglichen: gleiches Datum in anderer Schreibweise ist kein Fehler
+    awk -v a="$(norm_date "$end")" -v b="$(norm_date "$date")" 'BEGIN { exit !(a < b) }' && { echo "Ende vor Start in $f" >&2; exit 1; }
+  fi
+  printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\n' "$(norm_date "$date")" "$kind" "$slug" "$date" "$end" "$title" "$desc" >> "$TMP/tl"
+done
+LC_ALL=C sort -r "$TMP/tl" > "$TMP/tl.sorted"
+# Anzahl der Fragmente für die Einträge jenseits der Startseite (aufgerundet)
+tl_total=$(wc -l < "$TMP/tl.sorted"); TL_CHUNKS=0
+[ "$tl_total" -gt "$TL_MAX" ] && TL_CHUNKS=$(( (tl_total - TL_MAX + TL_CHUNK - 1) / TL_CHUNK ))
 
 # --- Blog-Übersicht und Startseite ----------------------------------------------
 {
@@ -89,13 +138,36 @@ render "$TMP/blog.md" "$OUT/blog/index.html" -M pagetitle=Blog
   head -n 5 "$TMP/sorted" | while IFS=$US read -r date slug title tags desc; do post_item; done
   printf ':::\n\n[Alle Beiträge →](%s/blog/)\n' "$BASE"
   # Timeline als rohes HTML, die Spalte liegt per CSS neben dem Inhalt (ohne Einträge entfällt sie)
-  if [ -s "$TMP/sorted" ]; then
-    printf '\n```{=html}\n<aside class="timeline" aria-label="Timeline">\n<h2>Timeline</h2>\n<div class="timeline-scroll">\n<ol class="timeline-list">\n'
-    head -n 8 "$TMP/sorted" | while IFS=$US read -r date slug title tags desc; do timeline_item; done
-    printf '</ol>\n</div>\n</aside>\n```\n'
+  if [ -s "$TMP/tl.sorted" ]; then
+    scroll_attrs=; [ "$TL_CHUNKS" -gt 0 ] && scroll_attrs=" data-chunks=\"$TL_CHUNKS\" data-src=\"$BASE/timeline/chunk-\""
+    printf '\n```{=html}\n<aside class="timeline" aria-label="Timeline">\n<h2>Timeline</h2>\n<div class="timeline-scroll"%s>\n<ol class="timeline-list">\n' "$scroll_attrs"
+    head -n "$TL_MAX" "$TMP/tl.sorted" | while IFS=$US read -r key kind slug date end title desc; do timeline_item; done
+    printf '</ol>\n</div>\n'
+    # ab dem Eintrag TL_MAX+1 führt ein Link auf die vollständige Seite
+    [ "$(wc -l < "$TMP/tl.sorted")" -gt "$TL_MAX" ] && printf '<p class="timeline-more"><a href="%s/timeline/">Alles ansehen →</a></p>\n' "$BASE"
+    printf '</aside>\n```\n'
   fi
 } > "$TMP/home.md"
-render "$TMP/home.md" "$OUT/index.html" -M home=true -M pagetitle=Start --metadata description="$SITE_DESCRIPTION"
+# Die Klasse home (breite Startseite mit Spalte) gilt nur mit Timeline, sonst bliebe die Spalte leer
+home_opt=; [ -s "$TMP/tl.sorted" ] && home_opt="-M home=true"
+render "$TMP/home.md" "$OUT/index.html" $home_opt -M pagetitle=Start --metadata description="$SITE_DESCRIPTION"
+
+# --- Timeline-Seite: alle Einträge, ohne Container (entfällt ohne Einträge) ---------------------------
+if [ -s "$TMP/tl.sorted" ]; then
+  {
+    printf -- '---\ntitle: Timeline\n---\n\n```{=html}\n<section class="timeline timeline-full">\n<ol class="timeline-list">\n'
+    while IFS=$US read -r key kind slug date end title desc; do timeline_item; done < "$TMP/tl.sorted"
+    printf '</ol>\n</section>\n```\n'
+  } > "$TMP/timeline.md"
+  render "$TMP/timeline.md" "$OUT/timeline/index.html" -M pagetitle=Timeline
+  # Fragmente zum Nachladen: nur <li>-Elemente, Einträge ab TL_MAX+1 in Blöcken zu TL_CHUNK
+  k=1
+  while [ "$k" -le "$TL_CHUNKS" ]; do
+    tail -n +$(( TL_MAX + (k - 1) * TL_CHUNK + 1 )) "$TMP/tl.sorted" | head -n "$TL_CHUNK" |
+      while IFS=$US read -r key kind slug date end title desc; do timeline_item; done > "$OUT/timeline/chunk-$k.html"
+    k=$((k + 1))
+  done
+fi
 
 # --- Themen (Tags) ------------------------------------------------------------
 cut -d "$US" -f4 "$TMP/sorted" | tr ' ' '\n' | sed '/^$/d' | sort -u > "$TMP/tags"
