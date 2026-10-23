@@ -85,6 +85,22 @@ Das Besondere: Ich habe die sechs Tickets einmal komplett selbstständig umsetze
 - Ein manueller Probelauf mit den echten Programmen in einem Wegwerf-Klon fand etwas, das die Stubs nicht zeigen konnten: `gh label list` scheitert in einem Klon ohne GitHub-Remote.
 - Das Review vor dem Archivieren fand nach 89 grünen Tests noch sechs echte Fehler.
 
+## Ein Gate vor der Freigabe: lokale Abnahme
+
+Beim ersten Umsetzungs-PR (Timeline, Ticket #16) kam ein optionaler Schritt dazu: Der PR bleibt Draft, bis ich den Branch lokal ausgecheckt und angesehen habe. Der PR-Text enthält die Befehle (`git switch`, Shell-Check, Seite bauen und starten) und eine Prüfliste, bei sichtbaren Änderungen Screenshots in allen Farbvarianten und auf dem Handy. Ablauf: TDD für alles, was der Build ausgibt (sieben Fälle, jeweils erst rot, dann grün, ein Mutationscheck bestätigt, dass der Test wirklich etwas prüft), Screenshots für alles Optische, danach der Mensch. Das Gate ergänzt die automatischen Prüfungen, ersetzt sie nicht, und entfällt bei reiner Doku.
+
+## Was mir fehlt: der Überblick
+
+Mit Sub-Issues, `blocked_by` und Status-Labels habe ich alle Daten, aber keine Sicht darauf: Wer hängt von wem ab, was läuft gerade, wo stehe ich im Prozess, gibt es einen Zeitplan? Die Entscheidungen nach einer Grilling-Runde (elf Fragen):
+
+- Die Sicht kommt aus **kvasir**, meinem Terminal-Tool: deterministischer Python-Code ohne Modell, CLI mit JSON-Ausgabe, TUI-Panel und dünne Skills als Verbraucher. Empfohlen, nicht zwingend, und **rein lesend**.
+- Eine große Ansicht mit Spuren je Feature, Kanten für Abhängigkeiten, Statusfarbe und Zeitachse, dazu ein **Stepper** als Kontext (erledigt, aktuell, offen).
+- Der Status kommt aus **Fakten** (Issue geschlossen, offene Blocker, PR Draft oder bereit), das Label ist nur ein Hinweis. Widersprüche werden angezeigt, nicht still korrigiert.
+- Termine: Meilenstein für Fristen und Sprints, eine feste Zeile im Issue für Zeiträume und Quartalsende. Ohne Termine keine erfundene Zeit.
+- Phasen und weitere Einstellungen stehen als Daten in einer `kvasir.toml` im Repo, `kvasir init` legt sie an, `kvasir doctor` prüft sie.
+
+Warum nicht GitHub Projects? Es zeigt Spalten und eine Roadmap, aber keinen Abhängigkeitsgraphen, und braucht Token-Rechte. Noch nicht gebaut (Issue #28, Umsetzung in kvasir).
+
 ## Weiter
 
 Wie der Prozess erzwungen und geprüft wird (Gates, `kvasir`, Evals, Skills und Rollen als Konfiguration), steht im zweiten Teil: *Den Prozess erzwingen und prüfen*.
