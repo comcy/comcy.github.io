@@ -1,0 +1,10 @@
+{
+  "issues": {
+    "6": {
+      "title": "Beispiel-Ticket ohne ready-for-agent",
+      "state": "OPEN",
+      "labels": ["enhancement", "needs-triage"],
+      "blocked_by": []
+    }
+  }
+}

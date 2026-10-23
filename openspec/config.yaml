@@ -30,7 +30,7 @@ context: |
 # Workflow-Verdrahtung, siehe docs/workflow.md
 rules:
   tasks:
-    - Jede Task so schneiden, dass sie ein GitHub-Issue sein kann (ein Ergebnis, einzeln prüfbar), Eingabe für /to-tickets
+    - Tasks nach vertikalen Scheiben schneiden (jede einzeln lauffähig und prüfbar, mit eigenem Test und eigener Doku), nicht nach Schichten wie Daten, Ausgabe, Layout; jede Task kann ein GitHub-Issue sein, Eingabe für /to-tickets
 operations:
   apply:
     guidance:

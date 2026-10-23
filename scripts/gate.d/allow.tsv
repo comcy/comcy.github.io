@@ -1,0 +1,2 @@
+# Ausnahmen für gate.py secrets. path: Glob gegen den Pfad, pattern: Regex gegen die Zeile (bei Dateiregeln: den Pfad), reason: Pflicht.
+path	pattern	reason

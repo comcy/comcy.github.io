@@ -1,0 +1,20 @@
+# Übergänge innerhalb einer Dimension (kind aus states.tsv). from: Zustand oder - (Start). to: Zustand (auch terminal).
+# trigger: Name des Ereignisses. guard: Detektoren aus detectors.tsv (Komma = UND) oder - (keine Bedingung).
+# Zwei Dimensionen laufen nebeneinander: ein Ticket trägt eine Triage-Rolle und einen Status.
+from	to	trigger	guard
+-	needs-triage	issue_opened	-
+needs-triage	needs-info	triage_needs_info	-
+needs-info	needs-triage	reporter_replied	-
+needs-triage	ready-for-agent	triage_ready	-
+needs-triage	ready-for-human	triage_ready	-
+needs-triage	wontfix	triage_rejected	-
+ready-for-agent	closed	issue_closed	issue_closed
+ready-for-human	closed	issue_closed	issue_closed
+wontfix	closed	issue_closed	issue_closed
+-	status:ready-for-refinement	triage_accepted	has_label_kind:triage
+status:ready-for-refinement	status:in-refinement	refinement_started	-
+status:in-refinement	status:in-progress	work_started	subissues_exist
+-	status:in-progress	branch_created	label:ready-for-agent,no_open_blockers
+status:in-progress	status:in-review	pr_ready	checks:success
+status:in-review	status:in-progress	changes_requested	-
+status:in-review	closed	pr_merged	pr_state:merged

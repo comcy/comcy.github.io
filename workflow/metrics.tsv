@@ -1,0 +1,7 @@
+# Metriken des Prozesses. art: leading|lagging. unit: h|d|%|n. target: optional, Zahl. enabled: yes|no.
+id	art	name	unit	source	target	enabled
+cycle_time	lagging	Durchlaufzeit je Ticket	h	ticket_cycle_time		yes
+pr_duration	leading	Dauer bis zum Merge je PR	h	pr_duration		yes
+ci_red_before_merge	leading	PRs mit rotem Lauf vor dem Merge	%	ci_red_before_merge		yes
+rework	lagging	Nacharbeit (Fix-PRs je Feature)	n	rework_fixes_per_change		yes
+eval_pass_rate	leading	Bestehensquote der Evals	%	eval_pass_rate		yes

@@ -13,8 +13,8 @@
 <rect x="40" y="134" width="470" height="64" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
 <circle cx="68" cy="166.0" r="15" fill="#64748b"/><text x="68" y="171.0" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">S</text>
 <text x="100" y="156" font-size="15" font-weight="700" fill="#0f172a">Setup (einmalig je Klon)</text>
-<text x="100" y="174" font-size="13" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" fill="#0f172a">sh scripts/setup  (geplant, #14)</text>
-<text x="100" y="190" font-size="11" fill="#475569">Voraussetzungen, openspec init, Adapter, Labels</text>
+<text x="100" y="174" font-size="13" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" fill="#0f172a">python3 scripts/setup.py [agent]</text>
+<text x="100" y="190" font-size="11" fill="#475569">Voraussetzungen, Adapter, Labels (--labels), --check</text>
 <line x1="68" y1="198" x2="68" y2="224" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
 <rect x="40" y="224" width="470" height="64" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
 <circle cx="68" cy="256.0" r="15" fill="#16a34a"/><text x="68" y="261.0" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">0</text>
@@ -87,9 +87,9 @@
 <line x1="510" y1="886.0" x2="560" y2="886.0" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4 3"/>
 <rect x="560" y="854" width="340" height="64" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 4"/>
 <text x="574" y="880" font-size="12.5" font-weight="700" fill="#5b21b6">Haken: eigene Anpassung</text><text x="574" y="898" font-size="11.5" fill="#44403c">z. B. Verlauf ins persönliche Wissenssystem</text>
-<line x1="510" y1="166.0" x2="560" y2="166.0" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4 3"/>
-<rect x="560" y="134" width="340" height="64" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2" stroke-dasharray="6 4"/>
-<text x="574" y="160" font-size="12.5" font-weight="700" fill="#92400e">Skript noch nicht gebaut</text><text x="574" y="178" font-size="11.5" fill="#44403c">bis dahin: Checkliste in docs/workflow.md</text>
+<line x1="510" y1="166.0" x2="560" y2="166.0" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="560" y="134" width="340" height="64" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="574" y="160" font-size="12.5" font-weight="700" fill="#334155">Daten: workflow/*.tsv</text><text x="574" y="178" font-size="11.5" fill="#44403c">Prüfen: python3 scripts/flow.py validate</text>
 <rect x="40" y="934" width="860" height="195" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" stroke-dasharray="7 5"/>
 <text x="58" y="960" font-size="14" font-weight="700" fill="#92400e">Erweiterungspunkte (Gerüst, noch nicht ausgebaut)</text>
 <text x="58" y="988" font-size="12.5" font-weight="700" fill="#78350f">UI/UX klären</text><text x="58" y="1003" font-size="11.5" fill="#44403c">/prototype vor Phase 2, Ergebnis in design.md</text>
