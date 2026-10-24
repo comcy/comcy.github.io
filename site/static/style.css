@@ -3,7 +3,7 @@
 :root {
   --bg: #0d1020; --bg2: #151a33; --fg: #e8ebf7; --muted: #98a1bf;
   --accent: #8b8bff; --accent2: #2dd4df;
-  /* Linkfarbe aus der Akzentfarbe, 35 % Textfarbe beigemischt: Kontrast mindestens 4,5:1 in allen Farbvarianten (site/tests/browser/kontrast.mjs) */
+  /* Linkfarbe aus der Akzentfarbe, 35 % Textfarbe beigemischt: Kontrast mindestens 4,5:1 in allen Farbvarianten (tests/browser/kontrast.mjs) */
   --link: color-mix(in srgb, var(--accent) 65%, var(--fg));
   --card: rgba(255, 255, 255, .06); --line: rgba(255, 255, 255, .12);
   --code: rgba(255, 255, 255, .08); --shadow: 0 8px 30px rgba(0, 0, 0, .35);

@@ -1,4 +1,4 @@
-// Browser-Prüfung des Nachladens (manuell, nicht Teil von tests/run.sh): zählt Einträge der Timeline nach Scrollen.
+// Browser-Prüfung des Nachladens (manuell, nicht Teil von site/tests/run.sh): zählt Einträge der Timeline nach Scrollen.
 // Ablauf: Seite mit mehr als TL_MAX Einträgen bauen und per http.server ausliefern, Chromium mit
 //   chromium --headless --no-sandbox --remote-debugging-port=9333 about:blank
 // starten, dann: node site/tests/browser/timeline-nachladen.mjs http://localhost:8000/ 9333

@@ -74,7 +74,7 @@ sh tests/run.sh
 Pull Request (`.github/workflows/test.yml`) und vor dem Veröffentlichen (`deploy.yml`).
 
 Baut die Seite in temporären Klonen mit eigenen Beiträgen und prüft die Timeline auf der Startseite
-(Anzahl, Reihenfolge, Datumsformate, Entwürfe, leere Seite). Kein Framework, nur `sh`, `pandoc`, `grep`.
+(Anzahl, Reihenfolge, Datumsformate, Entwürfe, leere Seite), den Footer und die Aufteilung in `content/` und `site/`. Kein Framework, nur `sh`, `pandoc`, `grep`.
 
 ## Aufbau
 

@@ -207,7 +207,7 @@ Haken an den generischen Phasen. Nur persönlich, nicht Teil des generischen Abl
 
 ## Teststrategie
 
-- **Szenario heißt Testfall:** Jedes Szenario einer OpenSpec-Spec ist ein Testfall. Die Shell-Tests unter `tests/<fähigkeit>-check.sh` sind die ausführbare Form des Verhaltens und bleiben im Repo. `<fähigkeit>` ist der Name der Fähigkeit (z. B. `timeline`), nicht der Name des Changes (`timeline-startseite`).
+- **Szenario heißt Testfall:** Jedes Szenario einer OpenSpec-Spec ist ein Testfall. Die Shell-Tests unter `site/tests/<fähigkeit>-check.sh` sind die ausführbare Form des Verhaltens und bleiben im Repo. `<fähigkeit>` ist der Name der Fähigkeit (z. B. `timeline`), nicht der Name des Changes (`timeline-startseite`).
 - **Teststelle für die Skripte:** Prozessaufruf von `scripts/setup.py`, `scripts/flow.py` bzw. `scripts/gate.py` in einem Wegwerf-Repo (Hooks mit echtem `git commit`), Stub-Programme für `gh` und `openspec`; die Tests schreiben nie ins echte Repo.
 - **Teststelle ist der Build-Aufruf:** `sh site/build.sh` in einem temporären Klon mit eigenen Fixtures, geprüft wird `public/` und der Fehlercode (Black-Box, keine internen Funktionen). Vor dem ersten Test werden die Teststellen bestätigt (`/tdd`).
 - **Layout per Screenshot:** Optik ist im Build-Output nicht sinnvoll prüfbar. Screenshots dienen als Beleg am PR (Branch `pr-screenshots`) und sind nicht persistent.

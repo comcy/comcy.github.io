@@ -16,6 +16,9 @@ done
 # Der Build läuft von überall und schreibt nach <Wurzel>/public
 OUT=$(mktemp -d); trap 'rm -rf "$OUT"' EXIT
 cp -R "$ROOT/site" "$ROOT/content" "$OUT/"
-(cd "$OUT" && SITE_URL=http://localhost sh site/build.sh >/dev/null 2>&1 && cd / && sh "$OUT/site/build.sh" >/dev/null 2>&1) || no "Build scheitert (im Wurzelverzeichnis oder von anderem Ordner)"
+(cd "$OUT" && SITE_URL=http://localhost sh site/build.sh >/dev/null 2>&1) || no "Build im Wurzelverzeichnis scheitert"
 [ -f "$OUT/public/index.html" ] && ok "public/index.html unter der Wurzel gebaut" || no "public/index.html fehlt"
+rm -rf "$OUT/public"
+(cd / && SITE_URL=http://localhost sh "$OUT/site/build.sh" >/dev/null 2>&1) || no "Build von anderem Arbeitsverzeichnis scheitert"
+[ -f "$OUT/public/index.html" ] && ok "Build von anderem Ordner schreibt nach <Wurzel>/public" || no "Build von anderem Ordner schreibt nicht nach <Wurzel>/public"
 exit $FAIL
