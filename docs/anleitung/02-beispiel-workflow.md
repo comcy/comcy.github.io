@@ -161,7 +161,7 @@ openspec status --change tag-uebersicht
 
 | Ticket | Inhalt | blockiert von |
 | --- | --- | --- |
-| #102 | Tracer: `/tags/` mit Zählung, Test an `build.sh` | — |
+| #102 | Tracer: `/tags/` mit Zählung, Test an `site/build.sh` | — |
 | #103 | Sortierung und Verlinkung auf die Tag-Seiten | #102 |
 | #104 | Themes und Mobil (alle acht Farbvarianten, 375 px) | #102 |
 | #105 | Doku und Abnahme | #103, #104 |

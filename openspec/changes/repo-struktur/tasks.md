@@ -2,8 +2,8 @@
 
 ## 1. Inhalt und Bauwerkzeug trennen
 
-- [ ] 1.1 Referenz-Build mit festem `SITE_URL` und Datum im Scratchpad ablegen (`public/` vor dem Umzug). Prüfung: Ordner vorhanden, `sh build.sh` läuft grün.
-- [ ] 1.2 `posts/`, `pages/`, `timeline/`, `gallery/`, `site.conf` nach `content/` und `build.sh`, `templates/`, `static/`, Shell- und Browser-Tests nach `site/` verschieben (`git mv`), Pfade in `build.sh` und Tests anpassen. Prüfung: `diff -r` zwischen Referenz und neuem `public/` ist leer; `sh site/tests/run.sh` grün.
+- [x] 1.1 Referenz-Build mit festem `SITE_URL` und Datum im Scratchpad ablegen (`public/` vor dem Umzug). Prüfung: Ordner vorhanden, `sh build.sh` läuft grün.
+- [x] 1.2 `posts/`, `pages/`, `timeline/`, `gallery/`, `site.conf` nach `content/` und `build.sh`, `templates/`, `static/`, Shell- und Browser-Tests nach `site/` verschieben (`git mv`), Pfade in `build.sh` und Tests anpassen. Prüfung: `diff -r` zwischen Referenz und neuem `public/` ist leer; `sh site/tests/run.sh` grün.
 - [ ] 1.3 `deploy.yml`, `test.yml` (Job `test`) und `.gitignore` auf die neuen Pfade stellen, README (Schreiben, Timeline, Lokal ansehen) anpassen. Prüfung: PR-CI grün, Jobnamen unverändert; Pages-Deploy nach dem Merge zeigt dieselben URLs.
 
 ## 2. Konfiguration aus dem Werkzeug lösen (am Ort)

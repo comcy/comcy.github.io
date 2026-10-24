@@ -1,7 +1,7 @@
-// Browser-Abnahme der Timeline (manuell, nicht Teil von tests/run.sh): Tastatur, reduzierte Bewegung, kein horizontales
-// Scrollen bei 375 px. Die Kontraste prüft tests/browser/kontrast.mjs für die ganze Seite.
+// Browser-Abnahme der Timeline (manuell, nicht Teil von site/tests/run.sh): Tastatur, reduzierte Bewegung, kein horizontales
+// Scrollen bei 375 px. Die Kontraste prüft site/tests/browser/kontrast.mjs für die ganze Seite.
 // Ablauf wie bei timeline-nachladen.mjs: Seite bauen und ausliefern, Chromium mit --remote-debugging-port starten, dann
-//   node tests/browser/timeline-abnahme.mjs http://localhost:8000 9333
+//   node site/tests/browser/timeline-abnahme.mjs http://localhost:8000 9333
 const [,, base, port] = process.argv;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let fails = 0;

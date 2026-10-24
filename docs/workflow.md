@@ -182,7 +182,7 @@ Fehlende Daten erscheinen als "keine Daten", Stichproben unter drei Einträgen a
 
 ## Teil B: Dieses Repo
 
-- Stack: POSIX-Shell + pandoc, kein Testframework. "Test" heißt hier: `sh build.sh` läuft sauber, erwartete Dateien in `public/` existieren, Stichproben per `grep`. Ein Check pro Logik, kein Framework (ponytail).
+- Stack: POSIX-Shell + pandoc, kein Testframework. "Test" heißt hier: `sh site/build.sh` läuft sauber, erwartete Dateien in `public/` existieren, Stichproben per `grep`. Ein Check pro Logik, kein Framework (ponytail).
 - Zusätzliche Voraussetzung: `pandoc` (Arch: `sudo pacman -Syu pandoc-cli`).
 - Sprache der Specs: Deutsch, Strukturüberschriften und SHALL/MUST englisch (`openspec/config.yaml`).
 - Commits: Conventional Commits (erzwungen durch Hook `commit-msg`, siehe "Commit-Lint"), Secret-Scan vor dem Staging.
@@ -207,9 +207,9 @@ Haken an den generischen Phasen. Nur persönlich, nicht Teil des generischen Abl
 
 ## Teststrategie
 
-- **Szenario heißt Testfall:** Jedes Szenario einer OpenSpec-Spec ist ein Testfall. Die Shell-Tests unter `tests/<fähigkeit>-check.sh` sind die ausführbare Form des Verhaltens und bleiben im Repo. `<fähigkeit>` ist der Name der Fähigkeit (z. B. `timeline`), nicht der Name des Changes (`timeline-startseite`).
+- **Szenario heißt Testfall:** Jedes Szenario einer OpenSpec-Spec ist ein Testfall. Die Shell-Tests unter `site/tests/<fähigkeit>-check.sh` sind die ausführbare Form des Verhaltens und bleiben im Repo. `<fähigkeit>` ist der Name der Fähigkeit (z. B. `timeline`), nicht der Name des Changes (`timeline-startseite`).
 - **Teststelle für die Skripte:** Prozessaufruf von `scripts/setup.py`, `scripts/flow.py` bzw. `scripts/gate.py` in einem Wegwerf-Repo (Hooks mit echtem `git commit`), Stub-Programme für `gh` und `openspec`; die Tests schreiben nie ins echte Repo.
-- **Teststelle ist der Build-Aufruf:** `sh build.sh` in einem temporären Klon mit eigenen Fixtures, geprüft wird `public/` und der Fehlercode (Black-Box, keine internen Funktionen). Vor dem ersten Test werden die Teststellen bestätigt (`/tdd`).
+- **Teststelle ist der Build-Aufruf:** `sh site/build.sh` in einem temporären Klon mit eigenen Fixtures, geprüft wird `public/` und der Fehlercode (Black-Box, keine internen Funktionen). Vor dem ersten Test werden die Teststellen bestätigt (`/tdd`).
 - **Layout per Screenshot:** Optik ist im Build-Output nicht sinnvoll prüfbar. Screenshots dienen als Beleg am PR (Branch `pr-screenshots`) und sind nicht persistent.
 - **Wo es läuft:** lokal mit `sh tests/run.sh`, in der CI auf jedem Pull Request und vor dem Veröffentlichen. Ein verbindlicher Branch-Schutz ("Status check erforderlich") ist eine GitHub-Einstellung und bewusst noch nicht gesetzt.
 - **Mutationscheck:** Bei einem Test, der etwas Unsichtbares schützen soll (z. B. feste Reihenfolge), den Code kurz verschlechtern und prüfen, dass der Test rot wird.
