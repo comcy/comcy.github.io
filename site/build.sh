@@ -1,17 +1,17 @@
 #!/bin/sh
 # Baut die statische Seite aus Markdown nach ./public
-# Benötigt: POSIX-Shell, pandoc. Entwürfe mitbauen: DRAFTS=1 ./build.sh
+# Benötigt: POSIX-Shell, pandoc. Entwürfe mitbauen: DRAFTS=1 sh site/build.sh
 set -eu
 
-cd "$(dirname "$0")"
-. ./site.conf
+cd "$(dirname "$0")/.."
+. ./content/site.conf
 
 OUT=public
 BASE=$(printf '%s' "$SITE_URL" | sed 's|^[a-z]*://[^/]*||')
 YEAR=$(date +%Y)
 # Prüfsumme von CSS und JS als Cache-Buster, damit Browser nach Änderungen sofort die neuen Dateien laden
-ASSET_V=$(cat static/style.css static/site.js static/timeline.js | cksum | cut -d' ' -f1)
-TL_MAX=8  # Einträge der Timeline auf der Startseite; mehr führen zum Link "Alles ansehen" (README und tests/timeline-check.sh nennen den Wert)
+ASSET_V=$(cat site/static/style.css site/static/site.js site/static/timeline.js | cksum | cut -d' ' -f1)
+TL_MAX=8  # Einträge der Timeline auf der Startseite; mehr führen zum Link "Alles ansehen" (README und site/tests/timeline-check.sh nennen den Wert)
 TL_CHUNK=10  # Einträge je nachladbarem Fragment unter /timeline/chunk-N.html
 US=$(printf '\037')  # Feldtrenner im Index (kein Whitespace, damit leere Felder erhalten bleiben)
 TMP=$(mktemp -d)
@@ -19,13 +19,13 @@ trap 'rm -rf "$TMP"' EXIT
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
-cp -R static/. "$OUT"/
+cp -R site/static/. "$OUT"/
 
 # pandoc mit gemeinsamen Variablen: render <eingabe> <ausgabe> [weitere Optionen]
 render() {
   in=$1; out=$2; shift 2
   mkdir -p "$(dirname "$out")"
-  pandoc "$in" --from markdown --to html5 --template templates/page.html \
+  pandoc "$in" --from markdown --to html5 --template site/templates/page.html \
     -V site="$SITE_TITLE" -V v="$ASSET_V" -V base="$BASE" -V year="$YEAR" -V author="$SITE_AUTHOR" \
     "$@" -o "$out"
 }
@@ -76,11 +76,11 @@ post_item() {
 # --- Posts ------------------------------------------------------------------
 # Index: datum, slug, titel, tags, beschreibung (getrennt durch $US)
 : > "$TMP/index"
-for f in posts/*.md; do
+for f in content/posts/*.md; do
   [ -e "$f" ] || continue
   slug=$(basename "$f" .md)
   slug=${slug#[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-}
-  meta=$(pandoc "$f" --to plain --wrap=none --template templates/meta.txt)
+  meta=$(pandoc "$f" --to plain --wrap=none --template site/templates/meta.txt)
   check_date "$(meta_field 1)" "$f"
   draft=$(meta_field 3)
   if [ "$draft" = draft ] && [ "${DRAFTS:-0}" != 1 ]; then
@@ -90,7 +90,7 @@ for f in posts/*.md; do
   printf '%s\t%s\n' "$slug" "$meta" |
     awk -F'\t' -v OFS="$US" '{print $2, $1, $3, $5, $6}' >> "$TMP/index"
   render "$f" "$OUT/blog/$slug/index.html" -M post=true -M pagetitle="$(meta_field 2)"
-  # Bilder und andere Dateien neben dem Post: posts/<dateiname>/ wird mitkopiert
+  # Bilder und andere Dateien neben dem Post: content/posts/<dateiname>/ wird mitkopiert
   [ -d "${f%.md}" ] && cp -R "${f%.md}/." "$OUT/blog/$slug/"
   echo "Post: $slug"
 done
@@ -102,11 +102,11 @@ while IFS=$US read -r date slug title tags desc; do
   printf '%s\037post\037%s\037%s\037\037%s\037%s\n' "$(norm_date "$date")" "$slug" "$date" "$title" "$desc" >> "$TMP/tl"
 done < "$TMP/sorted"
 # Seiten mit date: (außer Startseite und Galerie) und Bookmarks aus timeline/; Entwürfe wie im Blog
-for f in pages/*.md timeline/*.md; do
+for f in content/pages/*.md content/timeline/*.md; do
   [ -e "$f" ] || continue
   slug=$(basename "$f" .md); kind=bookmark
-  case $f in pages/*) kind=page; case $slug in index|gallery) continue ;; esac ;; esac
-  meta=$(pandoc "$f" --to plain --wrap=none --template templates/timeline-meta.txt)
+  case $f in content/pages/*) kind=page; case $slug in index|gallery) continue ;; esac ;; esac
+  meta=$(pandoc "$f" --to plain --wrap=none --template site/templates/timeline-meta.txt)
   date=$(meta_field 1); end=$(meta_field 2); title=$(meta_field 3); desc=$(meta_field 4)
   [ "$kind" = page ] && [ -z "$date" ] && continue
   [ "$(meta_field 5)" = draft ] && [ "${DRAFTS:-0}" != 1 ] && continue
@@ -133,7 +133,7 @@ tl_total=$(wc -l < "$TMP/tl.sorted"); TL_CHUNKS=0
 render "$TMP/blog.md" "$OUT/blog/index.html" -M pagetitle=Blog
 
 {
-  if [ -f pages/index.md ]; then cat pages/index.md; else printf -- '---\ntitle: %s\n---\n' "$SITE_TITLE"; fi
+  if [ -f content/pages/index.md ]; then cat content/pages/index.md; else printf -- '---\ntitle: %s\n---\n' "$SITE_TITLE"; fi
   printf '\n## Neueste Beiträge\n\n::: posts\n'
   head -n 5 "$TMP/sorted" | while IFS=$US read -r date slug title tags desc; do post_item; done
   printf ':::\n\n[Alle Beiträge →](%s/blog/)\n' "$BASE"
@@ -191,12 +191,12 @@ while read -r tag; do
 done < "$TMP/tags"
 
 # --- Galerie ------------------------------------------------------------------
-# Bilder in gallery/, optionale Bildunterschrift in gallery/<bild>.txt
+# Bilder in content/gallery/, optionale Bildunterschrift in content/gallery/<bild>.txt
 mkdir -p "$OUT/gallery"
 {
-  if [ -f pages/gallery.md ]; then cat pages/gallery.md; else printf -- '---\ntitle: Galerie\n---\n'; fi
+  if [ -f content/pages/gallery.md ]; then cat content/pages/gallery.md; else printf -- '---\ntitle: Galerie\n---\n'; fi
   printf '\n::: gallery\n'
-  for img in gallery/*; do
+  for img in content/gallery/*; do
     case $img in *.jpg|*.jpeg|*.png|*.webp|*.gif|*.svg) ;; *) continue ;; esac
     name=$(basename "$img")
     cp "$img" "$OUT/gallery/$name"
@@ -208,8 +208,8 @@ mkdir -p "$OUT/gallery"
 } > "$TMP/gallery.md"
 render "$TMP/gallery.md" "$OUT/gallery/index.html" -M pagetitle=Galerie
 
-# --- Weitere Seiten (pages/*.md außer index/gallery) ----------------------------
-for f in pages/*.md; do
+# --- Weitere Seiten (content/pages/*.md außer index/gallery) ----------------------------
+for f in content/pages/*.md; do
   [ -e "$f" ] || continue
   name=$(basename "$f" .md)
   case $name in index|gallery) continue ;; esac

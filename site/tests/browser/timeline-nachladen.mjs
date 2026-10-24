@@ -1,7 +1,7 @@
 // Browser-Prüfung des Nachladens (manuell, nicht Teil von tests/run.sh): zählt Einträge der Timeline nach Scrollen.
 // Ablauf: Seite mit mehr als TL_MAX Einträgen bauen und per http.server ausliefern, Chromium mit
 //   chromium --headless --no-sandbox --remote-debugging-port=9333 about:blank
-// starten, dann: node tests/browser/timeline-nachladen.mjs http://localhost:8000/ 9333
+// starten, dann: node site/tests/browser/timeline-nachladen.mjs http://localhost:8000/ 9333
 // Erwartung bei 25 Einträgen: am Ende 25 Einträge, zwei abgerufene Fragmente, keine Doppelungen, keine Marke mehr.
 const [,, url, port] = process.argv;
 const sleep = ms => new Promise(r => setTimeout(r, ms));

@@ -2,7 +2,7 @@
 // Farbvarianten, WCAG AA (4,5:1 für Text, 3:1 für Punkte der Timeline) gegen den schwächeren Wert von --bg und --bg2.
 // Ablauf: Seite bauen und ausliefern (mit Beiträgen mit Tags und mehr als einem Timeline-Eintrag), Chromium mit
 //   chromium --headless --no-sandbox --remote-debugging-port=9333 about:blank
-// starten, dann: node tests/browser/kontrast.mjs http://localhost:8000 9333 /blog/<slug-eines-beitrags>/
+// starten, dann: node site/tests/browser/kontrast.mjs http://localhost:8000 9333 /blog/<slug-eines-beitrags>/
 const [,, base, port, post = '/blog/'] = process.argv;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const PAGES = ['/', '/blog/', post, '/tags/', '/timeline/', '/about/'];

@@ -34,7 +34,7 @@ jobs:
       - uses: actions/configure-pages@v5
         id: pages
       - name: Seite bauen
-        run: sh build.sh
+        run: sh site/build.sh
         env:
           SITE_URL: ${{ steps.pages.outputs.base_url }}
       - uses: actions/upload-pages-artifact@v3
