@@ -10,7 +10,7 @@ OUT=public
 BASE=$(printf '%s' "$SITE_URL" | sed 's|^[a-z]*://[^/]*||')
 YEAR=$(date +%Y)
 # Prüfsumme von CSS und JS als Cache-Buster, damit Browser nach Änderungen sofort die neuen Dateien laden
-ASSET_V=$(cat site/static/style.css site/static/site.js site/static/timeline.js | cksum | cut -d' ' -f1)
+ASSET_V=$(cat site/static/style.css site/static/site.js site/static/bg.js site/static/timeline.js | cksum | cut -d' ' -f1)
 TL_MAX=8  # Einträge der Timeline auf der Startseite; mehr führen zum Link "Alles ansehen" (README und site/tests/timeline-check.sh nennen den Wert)
 TL_CHUNK=10  # Einträge je nachladbarem Fragment unter /timeline/chunk-N.html
 US=$(printf '\037')  # Feldtrenner im Index (kein Whitespace, damit leere Felder erhalten bleiben)
