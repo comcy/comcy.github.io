@@ -91,8 +91,13 @@ blockquote { margin: 0; padding-left: 1rem; border-left: 3px solid var(--accent)
   background: var(--card); box-shadow: var(--shadow); }
 .gallery img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 10px; }
 .gallery figcaption { color: var(--muted); font-size: .85rem; margin-top: .4rem; }
-footer.site { margin-top: 3rem; padding-bottom: 2rem; color: var(--muted); font-size: .9rem; }
-footer.site p { margin: 0; padding-top: 1rem; border-top: 1px solid var(--line); }
+/* sticky unten links, Inhalt scrollt darunter durch */
+footer.site { position: fixed; left: .75rem; bottom: .75rem; z-index: 10; margin: 0; padding: .35rem .9rem;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%);
+  color: var(--muted); font-size: .85rem; }
+footer.site p { margin: 0; }
+body { padding-bottom: 4rem; }
 .copy-btn { position: absolute; top: .4rem; right: .4rem; font: inherit; font-size: .75rem; cursor: pointer;
   padding: .15rem .5rem; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--muted); }
 div.sourceCode { position: relative; }
