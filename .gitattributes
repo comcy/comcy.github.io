@@ -2,4 +2,6 @@
 workflow/** text eol=lf
 scripts/** text eol=lf
 tests/** text eol=lf
+site/tests/** text eol=lf
+site/build.sh text eol=lf
 .githooks/** text eol=lf

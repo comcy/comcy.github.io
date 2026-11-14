@@ -1,8 +1,8 @@
 #!/bin/sh
-# Prüft die Timeline über den Build (Black-Box): sh tests/timeline-check.sh
+# Prüft die Timeline über den Build (Black-Box): sh site/tests/timeline-check.sh
 # Jeder Fall baut die Seite in einem temporären Klon mit eigenen Beiträgen und prüft public/.
 set -u
-ROOT=$(cd "$(dirname "$0")/.." && pwd)
+ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 FAIL=0
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
@@ -12,17 +12,17 @@ no() { echo "FEHLER $1"; FAIL=1; }
 
 # fresh <name>: leerer Klon ohne Beiträge, setzt W
 fresh() {
-  W=$WORK/$1; mkdir -p "$W/posts" "$W/timeline"
-  for d in build.sh site.conf templates static pages; do cp -R "$ROOT/$d" "$W/"; done
+  W=$WORK/$1; mkdir -p "$W/content/posts" "$W/content/timeline"
+  cp -R "$ROOT/site" "$W/"; cp -R "$ROOT/content/site.conf" "$ROOT/content/pages" "$W/content/"
 }
 # post <dateiname-ohne-.md> <titel> [draft]
 post() {
   { printf -- '---\ntitle: %s\ndate: %s\n' "$2" "$(printf '%s' "$1" | cut -c1-10)"
     [ "${3:-}" = draft ] && printf 'draft: true\n'
-    printf -- '---\n\nText.\n'; } > "$W/posts/$1.md"
+    printf -- '---\n\nText.\n'; } > "$W/content/posts/$1.md"
 }
 # postd <dateiname-ohne-.md> <titel> <datum-wie-geschrieben>
-postd() { printf -- '---\ntitle: %s\ndate: "%s"\n---\n\nText.\n' "$2" "$3" > "$W/posts/$1.md"; }
+postd() { printf -- '---\ntitle: %s\ndate: "%s"\n---\n\nText.\n' "$2" "$3" > "$W/content/posts/$1.md"; }
 # bm <dateiname-ohne-.md> <titel> <datum> [end] [beschreibung]: Bookmark in timeline/
 bm() {
   # einfache Anführungszeichen: Backslashes bleiben wörtlich
@@ -30,16 +30,16 @@ bm() {
     [ -n "${4:-}" ] && printf "end: '%s'\n" "$4"
     [ -n "${5:-}" ] && printf "description: '%s'\n" "$5"
     [ "${6:-}" = draft ] && printf 'draft: true\n'
-    printf -- '---\n'; } > "$W/timeline/$1.md"
+    printf -- '---\n'; } > "$W/content/timeline/$1.md"
 }
 # build: baut in $W, Ausgabe in $W/out.log und $W/err.log, gibt den Exit-Code zurück
-build() { (cd "$W" && SITE_URL=http://localhost DRAFTS="${DRAFTS:-0}" sh build.sh >out.log 2>err.log); }
+build() { (cd "$W" && SITE_URL=http://localhost DRAFTS="${DRAFTS:-0}" sh site/build.sh >out.log 2>err.log); }
 # must_build: Build muss gelingen, sonst ein eigener Fehlerfall mit dem Log (statt eines indirekten Folgefehlers)
 must_build() { build || { no "Build schlägt fehl in $W: $(tail -n 2 "$W/err.log" | tr '\n' ' ')"; return 1; }; }
 # build_with VAR=wert: Build mit gesetzter Umgebungsvariable, nur in einer Unter-Shell (Präfix vor einer Funktion ist in POSIX nicht eindeutig)
 build_with() { ( export "$1"; must_build ); }
 # TL_MAX: Einträge auf der Startseite, aus build.sh gelesen (eine Quelle)
-TL_MAX=$(sed -n 's/^TL_MAX=\([0-9][0-9]*\).*/\1/p' "$ROOT/build.sh")
+TL_MAX=$(sed -n 's/^TL_MAX=\([0-9][0-9]*\).*/\1/p' "$ROOT/site/build.sh")
 # timeline_html: nur der Timeline-Abschnitt der Startseite
 timeline_html() { awk '/<aside class="timeline"/,/<\/aside>/' "$W/public/index.html"; }
 
@@ -129,7 +129,7 @@ if [ "$got" = "Neuer Beitrag|Ende nach Beitrag|Mit Ende|Laufend|" ]; then ok "Po
 
 # 12. Fehlerhafte Bookmarks brechen den Build ab und nennen die Datei
 fehler() { # <name> <frontmatter-zeilen>
-  fresh fehler-$1; printf -- '---\n%b\n---\n' "$2" > "$W/timeline/kaputt.md"
+  fresh fehler-$1; printf -- '---\n%b\n---\n' "$2" > "$W/content/timeline/kaputt.md"
   if build; then no "Bookmark $1 bricht den Build ab"
   elif grep -q "timeline/kaputt.md" "$W/err.log"; then ok "Bookmark $1 bricht ab und nennt die Datei"
   else no "Bookmark $1 bricht ab, nennt aber die Datei nicht"; fi
@@ -142,9 +142,9 @@ fehler ende-vor-start 'title: "Titel"\ndate: "2024-05-10"\nend: "2024-05-01"'
 
 # 13. Seiten mit date: erscheinen, ohne Datum nicht; Startseite und Galerie zählen nie
 fresh seiten
-printf -- '---\ntitle: Neue Seite\ndate: 2026-08-01\n---\n\nText.\n' > "$W/pages/neu.md"
-printf -- '---\ntitle: Startseite\ndate: 2026-09-01\n---\n\nText.\n' > "$W/pages/index.md"
-printf -- '---\ntitle: Galerie\ndate: 2026-09-02\n---\n\nText.\n' > "$W/pages/gallery.md"
+printf -- '---\ntitle: Neue Seite\ndate: 2026-08-01\n---\n\nText.\n' > "$W/content/pages/neu.md"
+printf -- '---\ntitle: Startseite\ndate: 2026-09-01\n---\n\nText.\n' > "$W/content/pages/index.md"
+printf -- '---\ntitle: Galerie\ndate: 2026-09-02\n---\n\nText.\n' > "$W/content/pages/gallery.md"
 must_build; h=$(timeline_html | tr '\n' ' ')
 if printf '%s' "$h" | grep -q '<a href="/neu/">Neue Seite</a>' && ! printf '%s' "$h" | grep -q 'Über mich\|Startseite\|Galerie'; then ok "Seite mit Datum erscheint, ohne Datum nicht, index und gallery nie"; else no "Seite mit Datum erscheint, ohne Datum nicht, index und gallery nie (war: $h)"; fi
 
@@ -215,14 +215,14 @@ if printf '%s' "$h" | grep -q '</summary><p>Text.</p><p class="tl-range">2024-05
 
 # 22. Jede Seite mit Datum hat den Pfad /<slug>/
 fresh seiten2
-for n in eins zwei; do printf -- '---\ntitle: Seite %s\ndate: 2026-08-0%s\n---\n\nText.\n' "$n" "$([ $n = eins ] && echo 1 || echo 2)" > "$W/pages/$n.md"; done
+for n in eins zwei; do printf -- '---\ntitle: Seite %s\ndate: 2026-08-0%s\n---\n\nText.\n' "$n" "$([ $n = eins ] && echo 1 || echo 2)" > "$W/content/pages/$n.md"; done
 must_build; h=$(timeline_html | tr '\n' ' ')
 if printf '%s' "$h" | grep -q 'href="/eins/">Seite eins' && printf '%s' "$h" | grep -q 'href="/zwei/">Seite zwei'; then ok "Seiten mit Datum verlinken auf /<slug>/"; else no "Seiten mit Datum verlinken auf /<slug>/"; fi
 
 # 23. Das Bookmark-Beispiel aus dem README baut wie beschrieben und zeigt den Zeitraum
 fresh readme
-awk '/^```markdown$/ { b = ""; inb = 1; next } /^```$/ { if (inb && b ~ /end: now/) { printf "%s", b; exit } inb = 0; next } inb { b = b $0 "\n" }' "$ROOT/README.md" > "$W/timeline/readme-beispiel.md"
-if [ -s "$W/timeline/readme-beispiel.md" ] && build && timeline_html | tr '\n' ' ' | grep -q 'Entwicklungsprozess mit OpenSpec aufgesetzt.*2026-10-04 – laufend'; then ok "README-Beispiel baut und zeigt den Zeitraum"; else no "README-Beispiel baut und zeigt den Zeitraum"; fi
+awk '/^```markdown$/ { b = ""; inb = 1; next } /^```$/ { if (inb && b ~ /end: now/) { printf "%s", b; exit } inb = 0; next } inb { b = b $0 "\n" }' "$ROOT/README.md" > "$W/content/timeline/readme-beispiel.md"
+if [ -s "$W/content/timeline/readme-beispiel.md" ] && build && timeline_html | tr '\n' ' ' | grep -q 'Entwicklungsprozess mit OpenSpec aufgesetzt.*2026-10-04 – laufend'; then ok "README-Beispiel baut und zeigt den Zeitraum"; else no "README-Beispiel baut und zeigt den Zeitraum"; fi
 
 # 24. Fragmente zum Nachladen: Einträge ab TL_MAX+1, je 10, keine Dopplung, nichts fehlt
 fresh chunks
